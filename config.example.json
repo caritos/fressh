@@ -1,0 +1,10 @@
+{
+  "databasePath": "~/Library/Application Support/fressh/articles.db",
+  "logLevel": "info",
+  "fetchInterval": 900,
+  "maxConcurrentFetches": 5,
+  "httpTimeout": 30000,
+  "userAgent": "fressh/1.0",
+  "excludeYouTubeShorts": false,
+  "maxArticleAgeDays": 30
+}

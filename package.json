@@ -1,0 +1,42 @@
+{
+  "name": "fressh",
+  "version": "1.0.0",
+  "description": "Fresh RSS - Lightweight RSS daemon and TUI reader for macOS",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "fressh": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "bun build src/index.ts --outdir dist --target node --format esm --sourcemap --external better-sqlite3 --external rss-parser --external axios --external node-cron --external fast-xml-parser --external commander --external p-limit --external cheerio --external blessed || tsc",
+    "dev": "bun src/index.ts",
+    "start": "bun dist/index.js",
+    "view": "bun dist/index.js view",
+    "test": "bun test/database.test.ts",
+    "cli": "bun dist/index.js",
+    "bun-direct": "bun src/index.ts"
+  },
+  "keywords": ["rss", "daemon", "macos"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "better-sqlite3": "^9.0.0",
+    "rss-parser": "^3.13.0",
+    "axios": "^1.6.0",
+    "node-cron": "^3.0.3",
+    "fast-xml-parser": "^4.3.0",
+    "commander": "^11.1.0",
+    "p-limit": "^5.0.0",
+    "cheerio": "^1.0.0",
+    "blessed": "^0.1.81"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0",
+    "tsx": "^4.7.0",
+    "@types/node": "^20.0.0",
+    "@types/better-sqlite3": "^7.6.8",
+    "@types/node-cron": "^3.0.11",
+    "@types/cheerio": "^0.22.35",
+    "@types/blessed": "^0.1.25"
+  }
+}

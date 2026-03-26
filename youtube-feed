@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Helper to convert YouTube channel URLs to RSS feed URLs
+
+if [ -z "$1" ]; then
+    echo "Usage: ./youtube-feed <youtube-url-or-@username>"
+    echo ""
+    echo "Examples:"
+    echo "  ./youtube-feed https://www.youtube.com/@MinutePhysics"
+    echo "  ./youtube-feed @MinutePhysics"
+    echo "  ./youtube-feed UCxxxx  (if you already have channel ID)"
+    exit 1
+fi
+
+INPUT="$1"
+
+# If it starts with UC, assume it's already a channel ID
+if [[ "$INPUT" =~ ^UC[a-zA-Z0-9_-]{22}$ ]]; then
+    CHANNEL_ID="$INPUT"
+    echo "✓ Channel ID: $CHANNEL_ID"
+# If it starts with @, prepend youtube.com
+elif [[ "$INPUT" =~ ^@ ]]; then
+    URL="https://www.youtube.com/$INPUT"
+    echo "Looking up channel ID for $INPUT..."
+    CHANNEL_ID=$(curl -sL "$URL" | grep -o 'channel_id=[^"&]*' | head -1 | cut -d= -f2)
+# Otherwise assume it's a full URL
+else
+    echo "Looking up channel ID..."
+    CHANNEL_ID=$(curl -sL "$INPUT" | grep -o 'channel_id=[^"&]*' | head -1 | cut -d= -f2)
+fi
+
+if [ -z "$CHANNEL_ID" ]; then
+    echo "❌ Could not find channel ID"
+    echo "Make sure the URL is correct and the channel exists"
+    exit 1
+fi
+
+RSS_URL="https://www.youtube.com/feeds/videos.xml?channel_id=$CHANNEL_ID"
+
+echo ""
+echo "✅ RSS Feed URL:"
+echo "$RSS_URL"
+echo ""
+echo "Test it:"
+echo "  ./rss test \"$RSS_URL\""
+echo ""
+echo "Add it to your OPML:"
+echo "  <outline type=\"rss\" text=\"Channel\" title=\"Channel\" xmlUrl=\"$RSS_URL\" htmlUrl=\"https://www.youtube.com/channel/$CHANNEL_ID\"/>"

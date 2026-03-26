@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Convenient wrapper for RSS daemon commands
+
+bun src/index.ts "$@"

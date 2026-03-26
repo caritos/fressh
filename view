@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+# Launch the RSS Daemon TUI
+cd "$(dirname "$0")"
+./dist/index.js view
