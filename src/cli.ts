@@ -225,7 +225,7 @@ export async function handleMarkFeedRead(url: string): Promise<void> {
   const feed = database.getFeed(url);
   if (!feed) {
     console.log('❌ Feed not found');
-    console.log('\n💡 List all feeds with: rss-daemon list');
+    console.log('\n💡 List all feeds with: fressh list');
     database.close();
     return;
   }
@@ -256,6 +256,19 @@ export async function handleDeleteShorts(): Promise<void> {
 
   const deleted = database.deleteYouTubeShorts();
   console.log(`\n✅ Deleted ${deleted} YouTube Shorts from the database`);
+
+  database.close();
+}
+
+export async function handleRemoveDuplicates(): Promise<void> {
+  const config = loadConfig();
+  logger.setLevel(config.logLevel);
+
+  database.initialize(config.databasePath);
+
+  console.log('Removing duplicate URLs...');
+  const deleted = database.removeDuplicateUrls();
+  console.log(`\n✅ Removed ${deleted} duplicate articles`);
 
   database.close();
 }
@@ -307,7 +320,7 @@ export async function handleLogs(options: { follow?: boolean; lines?: number }):
   const { existsSync, readFileSync } = await import('fs');
   const { spawn } = await import('child_process');
 
-  const logFile = join(homedir(), 'Library', 'Logs', 'rss-daemon', 'daemon.log');
+  const logFile = join(homedir(), 'Library', 'Logs', 'fressh', 'daemon.log');
 
   if (!existsSync(logFile)) {
     console.log('❌ Log file not found at:', logFile);
@@ -343,7 +356,7 @@ export async function handleLogs(options: { follow?: boolean; lines?: number }):
 
 async function getYouTubeChannelId(url: string): Promise<string | null> {
   try {
-    const response = await fetchFeed(url, { timeout: 10000, userAgent: 'rss-daemon/1.0' });
+    const response = await fetchFeed(url, { timeout: 10000, userAgent: 'fressh/1.0' });
     if (!response) return null;
 
     const match = response.data.match(/channel_id=([a-zA-Z0-9_-]{24})/);
@@ -394,7 +407,7 @@ export async function handleRead(options: { limit?: number; unread?: boolean }):
 
   if (articles.length === 0) {
     console.log('\n📭 No articles found');
-    console.log('\n💡 The daemon needs to fetch feeds first: rss-daemon start');
+    console.log('\n💡 The daemon needs to fetch feeds first: fressh start');
     database.close();
     return;
   }
@@ -418,7 +431,7 @@ export async function handleRead(options: { limit?: number; unread?: boolean }):
     console.log('');
   }
 
-  console.log(`💡 Use 'rss-daemon view' for an interactive interface`);
+  console.log(`💡 Use 'fressh view' for an interactive interface`);
 
   database.close();
 }

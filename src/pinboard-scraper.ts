@@ -17,7 +17,7 @@ export async function scrapePinboardPopular(timeout = 30000): Promise<PinboardLi
 
     const response = await axios.get('https://pinboard.in/popular/', {
       headers: {
-        'User-Agent': 'rss-daemon/1.0',
+        'User-Agent': 'fressh/1.0',
       },
       timeout,
     });

@@ -184,12 +184,11 @@ class DatabaseManager {
     if (articles.length === 0) return 0;
 
     const insertStmt = this.db.prepare(`
-      INSERT INTO articles (
+      INSERT OR IGNORE INTO articles (
         feed_id, guid, title, url, author,
         content_html, content_text, summary, published_at
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(feed_id, guid) DO NOTHING
     `);
 
     const transaction = this.db.transaction((articles: Article[]) => {
@@ -293,6 +292,34 @@ class DatabaseManager {
     `).run();
 
     return result.changes;
+  }
+
+  removeDuplicateUrls(): number {
+    if (!this.db) throw new Error('Database not initialized');
+
+    // Keep the oldest article for each URL, delete newer duplicates
+    const result = this.db.prepare(`
+      DELETE FROM articles
+      WHERE id NOT IN (
+        SELECT MIN(id)
+        FROM articles
+        WHERE url IS NOT NULL
+        GROUP BY url
+      ) AND url IS NOT NULL
+    `).run();
+
+    const deletedCount = result.changes || 0;
+    logger.info(`Removed ${deletedCount} duplicate URLs`);
+
+    // Now create the unique index to prevent future duplicates
+    try {
+      this.db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_articles_url_unique ON articles(url) WHERE url IS NOT NULL');
+      logger.info('Created unique index on article URLs');
+    } catch (error) {
+      logger.warn('Could not create unique URL index (may already exist):', error);
+    }
+
+    return deletedCount;
   }
 
   searchArticles(query: string, feedId?: number | null, showUnreadOnly: boolean = true): Article[] {

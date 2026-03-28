@@ -10,21 +10,21 @@ bash daemon/install.sh
 # • Start automatically on boot
 # • Fetch feeds every 15 minutes
 # • Restart automatically if it crashes
-# • Log to ~/Library/Logs/rss-daemon/
+# • Log to ~/Library/Logs/fressh/
 ```
 
 ## Stop/Start/Restart
 
 ```bash
 # STOP the daemon
-launchctl unload ~/Library/LaunchAgents/com.caritos.rss-daemon.plist
+launchctl unload ~/Library/LaunchAgents/com.caritos.fressh.plist
 
 # START the daemon
-launchctl load ~/Library/LaunchAgents/com.caritos.rss-daemon.plist
+launchctl load ~/Library/LaunchAgents/com.caritos.fressh.plist
 
 # RESTART the daemon (stop + start)
-launchctl unload ~/Library/LaunchAgents/com.caritos.rss-daemon.plist && \
-launchctl load ~/Library/LaunchAgents/com.caritos.rss-daemon.plist
+launchctl unload ~/Library/LaunchAgents/com.caritos.fressh.plist && \
+launchctl load ~/Library/LaunchAgents/com.caritos.fressh.plist
 ```
 
 **When to restart:**
@@ -40,8 +40,8 @@ launchctl load ~/Library/LaunchAgents/com.caritos.rss-daemon.plist
 
 ```bash
 # Is the daemon running?
-launchctl list | grep rss-daemon
-# Output example: "12345  0  com.caritos.rss-daemon"
+launchctl list | grep fressh
+# Output example: "12345  0  com.caritos.fressh"
 #                  ^^^^^ = process ID (means it's running)
 # No output = daemon is stopped
 
@@ -62,12 +62,12 @@ launchctl list | grep rss-daemon
 bash daemon/uninstall.sh
 
 # Manual way
-launchctl unload ~/Library/LaunchAgents/com.caritos.rss-daemon.plist
-rm ~/Library/LaunchAgents/com.caritos.rss-daemon.plist
+launchctl unload ~/Library/LaunchAgents/com.caritos.fressh.plist
+rm ~/Library/LaunchAgents/com.caritos.fressh.plist
 
 # Optional: remove all data
-rm -rf ~/Library/Application\ Support/rss-daemon
-rm -rf ~/Library/Logs/rss-daemon
+rm -rf ~/Library/Application\ Support/fressh
+rm -rf ~/Library/Logs/fressh
 ```
 
 ## Troubleshooting
@@ -76,14 +76,14 @@ rm -rf ~/Library/Logs/rss-daemon
 
 ```bash
 # Check for errors in stderr
-cat ~/Library/Logs/rss-daemon/stderr.log
+cat ~/Library/Logs/fressh/stderr.log
 
 # Try running in foreground to see errors
 ./rss start
 # (Ctrl+C to stop)
 
 # Check the plist file is correct
-cat ~/Library/LaunchAgents/com.caritos.rss-daemon.plist
+cat ~/Library/LaunchAgents/com.caritos.fressh.plist
 ```
 
 ### Daemon not fetching
@@ -103,7 +103,7 @@ cat ~/Library/LaunchAgents/com.caritos.rss-daemon.plist
 
 ```bash
 # Check process
-ps aux | grep rss-daemon
+ps aux | grep fressh
 
 # Reduce concurrent fetches (edit src/config.ts)
 # Change maxConcurrentFetches from 5 to 3
@@ -113,11 +113,11 @@ ps aux | grep rss-daemon
 ## File Locations
 
 ```
-~/Library/LaunchAgents/com.caritos.rss-daemon.plist    # Service definition
-~/Library/Logs/rss-daemon/daemon.log                # Main log file
-~/Library/Logs/rss-daemon/stdout.log                # Standard output
-~/Library/Logs/rss-daemon/stderr.log                # Error output
-~/Library/Application Support/rss-daemon/articles.db # Database
+~/Library/LaunchAgents/com.caritos.fressh.plist    # Service definition
+~/Library/Logs/fressh/daemon.log                # Main log file
+~/Library/Logs/fressh/stdout.log                # Standard output
+~/Library/Logs/fressh/stderr.log                # Error output
+~/Library/Application Support/fressh/articles.db # Database
 ```
 
 ## Common Tasks
@@ -126,7 +126,7 @@ ps aux | grep rss-daemon
 
 ```bash
 # 1. Stop daemon
-launchctl unload ~/Library/LaunchAgents/com.caritos.rss-daemon.plist
+launchctl unload ~/Library/LaunchAgents/com.caritos.fressh.plist
 
 # 2. Pull changes / edit code
 git pull
@@ -135,7 +135,7 @@ git pull
 # 3. No need to rebuild (Bun runs TypeScript directly!)
 
 # 4. Restart daemon
-launchctl load ~/Library/LaunchAgents/com.caritos.rss-daemon.plist
+launchctl load ~/Library/LaunchAgents/com.caritos.fressh.plist
 
 # 5. Verify it's running
 ./rss logs --follow
@@ -145,20 +145,20 @@ launchctl load ~/Library/LaunchAgents/com.caritos.rss-daemon.plist
 
 ```bash
 # Stop the daemon
-launchctl unload ~/Library/LaunchAgents/com.caritos.rss-daemon.plist
+launchctl unload ~/Library/LaunchAgents/com.caritos.fressh.plist
 
 # Use manual refresh when you want
 ./rss refresh
 
 # Re-enable automatic fetching
-launchctl load ~/Library/LaunchAgents/com.caritos.rss-daemon.plist
+launchctl load ~/Library/LaunchAgents/com.caritos.fressh.plist
 ```
 
 ### Change fetch interval
 
 ```bash
 # Edit the config
-vim ~/.rss-daemon/config.json
+vim ~/.fressh/config.json
 
 # Add/change:
 {
@@ -166,6 +166,6 @@ vim ~/.rss-daemon/config.json
 }
 
 # Restart daemon
-launchctl unload ~/Library/LaunchAgents/com.caritos.rss-daemon.plist && \
-launchctl load ~/Library/LaunchAgents/com.caritos.rss-daemon.plist
+launchctl unload ~/Library/LaunchAgents/com.caritos.fressh.plist && \
+launchctl load ~/Library/LaunchAgents/com.caritos.fressh.plist
 ```

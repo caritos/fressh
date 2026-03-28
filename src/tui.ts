@@ -39,6 +39,7 @@ export class ArticleViewer {
   private searchMode = false;
   private searchQuery = '';
   private currentPane: 'feeds' | 'articles' = 'articles';
+  private currentAISummary: { summary: string; tags: string[] } | null = null;
 
   constructor() {
     // Create screen
@@ -342,6 +343,12 @@ export class ArticleViewer {
       }
     });
 
+    this.screen.key(['c', 'C'], () => {
+      if (!this.showingHelp) {
+        this.copyArticleToClipboard();
+      }
+    });
+
     this.screen.key(['/'], () => {
       if (!this.showingHelp && !this.searchMode) {
         this.enterSearch();
@@ -611,6 +618,9 @@ export class ArticleViewer {
     const article = this.articles[index];
     if (!article) return;
 
+    // Clear any previous AI summary when switching articles
+    this.currentAISummary = null;
+
     // Use simpler date formatting for speed
     const publishedDate = article.published_at
       ? new Date(article.published_at).toLocaleDateString() + ' ' + new Date(article.published_at).toLocaleTimeString()
@@ -741,6 +751,61 @@ ${contentPreview}`;
 
     this.updateStatusBar();
     this.screen.render();
+  }
+
+  private copyArticleToClipboard(): void {
+    const index = this.articleList.selected;
+    const article = this.articles[index];
+    if (!article) {
+      this.updateStatusBar('No article selected');
+      return;
+    }
+
+    // Format article content for clipboard
+    const title = article.title || 'Untitled';
+    const url = article.url || 'No URL';
+    const author = article.author || 'Unknown';
+    const publishedDate = article.published_at
+      ? new Date(article.published_at).toLocaleString()
+      : 'Unknown date';
+    const feed = article.feed_title || 'Unknown';
+    const content = article.content_text || article.content_html || article.summary || 'No content available';
+
+    let clipboardContent = `${title}
+
+URL: ${url}
+Feed: ${feed}
+Author: ${author}
+Published: ${publishedDate}`;
+
+    // Add AI summary if one was generated
+    if (this.currentAISummary) {
+      clipboardContent += `\nTags: ${this.currentAISummary.tags.length > 0 ? this.currentAISummary.tags.join(', ') : 'none'}`;
+      clipboardContent += `\n\n========================================
+AI SUMMARY
+========================================
+
+${this.currentAISummary.summary}`;
+    }
+
+    clipboardContent += `\n\n---
+
+${content}`;
+
+    // Copy to clipboard using pbcopy
+    const pbcopy = spawn('pbcopy');
+    pbcopy.stdin.write(clipboardContent);
+    pbcopy.stdin.end();
+
+    pbcopy.on('close', (code) => {
+      if (code === 0) {
+        const summaryNote = this.currentAISummary ? ' (with AI summary)' : '';
+        this.updateStatusBar(`Copied "${title}" to clipboard${summaryNote}`);
+      } else {
+        this.updateStatusBar('Failed to copy to clipboard');
+      }
+      this.screen.render();
+    });
   }
 
   private openInBrowser(): void {
@@ -1000,6 +1065,9 @@ ${contentPreview}`;
         url: article.url,
       }, contentType);
 
+      // Store the AI summary so it can be copied to clipboard
+      this.currentAISummary = { summary, tags };
+
       // Display summary in detail pane
       this.displaySummary(article, summary, tags);
 
@@ -1054,7 +1122,7 @@ ${contentPreview}`;
   }
 
   private async fetchYouTubeTranscript(url: string): Promise<string> {
-    const tempDir = join(tmpdir(), 'rss-daemon');
+    const tempDir = join(tmpdir(), 'fressh');
     const videoId = this.extractYouTubeVideoId(url);
 
     if (!videoId) {
@@ -1207,7 +1275,7 @@ ${contentPreview}`;
     metadata: { title?: string; author?: string; url?: string },
     contentType: 'video' | 'article' = 'article'
   ): Promise<{ summary: string; tags: string[] }> {
-    const tempDir = join(tmpdir(), 'rss-daemon');
+    const tempDir = join(tmpdir(), 'fressh');
     const tempFile = join(tempDir, `prompt-${Date.now()}.txt`);
 
     try {
@@ -1422,6 +1490,7 @@ ${summary}`;
 {yellow-fg}Reading Articles{/yellow-fg}
   Enter         Open article in browser (marks as read)
   I             Generate AI summary of article (marks as read)
+  C             Copy article content to clipboard (pbcopy)
   Space         Toggle read/unread status
   S             Toggle starred status
 

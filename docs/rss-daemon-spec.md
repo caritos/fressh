@@ -92,7 +92,7 @@ NetNewsWire requires the app to be running for iCloud sync to occur, causing jar
 #### 4. Database
 - **Purpose**: Store feeds, articles, read/unread state
 - **Implementation**: better-sqlite3 (synchronous, fast)
-- **Location**: `~/Library/Application Support/rss-daemon/articles.db`
+- **Location**: `~/Library/Application Support/fressh/articles.db`
 
 ---
 
@@ -157,7 +157,7 @@ CREATE VIRTUAL TABLE articles_fts USING fts5(
 
 ## API / Interface
 
-### Configuration File: `~/.rss-daemon/config.json`
+### Configuration File: `~/.fressh/config.json`
 
 ```json
 {
@@ -169,11 +169,11 @@ CREATE VIRTUAL TABLE articles_fts USING fts5(
     "max_articles_per_feed": 1000
   },
   "database": {
-    "path": "~/Library/Application Support/rss-daemon/articles.db"
+    "path": "~/Library/Application Support/fressh/articles.db"
   },
   "logging": {
     "level": "info",
-    "path": "~/Library/Logs/rss-daemon/"
+    "path": "~/Library/Logs/fressh/"
   }
 }
 ```
@@ -200,28 +200,28 @@ Standard OPML format:
 
 ```bash
 # Start daemon
-rss-daemon start
+fressh start
 
 # Stop daemon
-rss-daemon stop
+fressh stop
 
 # Import OPML
-rss-daemon import subscriptions.opml
+fressh import subscriptions.opml
 
 # Export OPML
-rss-daemon export > my-feeds.opml
+fressh export > my-feeds.opml
 
 # Add single feed
-rss-daemon add "https://example.com/feed.xml"
+fressh add "https://example.com/feed.xml"
 
 # Remove feed
-rss-daemon remove "https://example.com/feed.xml"
+fressh remove "https://example.com/feed.xml"
 
 # Force refresh all feeds
-rss-daemon refresh
+fressh refresh
 
 # Show stats
-rss-daemon stats
+fressh stats
 # Output:
 #   Feeds: 45
 #   Unread: 234
@@ -229,10 +229,10 @@ rss-daemon stats
 #   Last sync: 2 minutes ago
 
 # Mark all as read
-rss-daemon mark-all-read
+fressh mark-all-read
 
 # Cleanup old articles
-rss-daemon cleanup
+fressh cleanup
 ```
 
 ### Programmatic Access (for jarvis)
@@ -241,7 +241,7 @@ rss-daemon cleanup
 // jarvis can directly query the database
 import Database from 'better-sqlite3';
 
-const db = new Database('~/Library/Application Support/rss-daemon/articles.db');
+const db = new Database('~/Library/Application Support/fressh/articles.db');
 
 // Get unread articles
 const unread = db.prepare(`
@@ -315,7 +315,7 @@ db.prepare('UPDATE articles SET read = 1 WHERE id = ?').run(articleId);
 
 ### File Structure
 ```
-rss-daemon/
+fressh/
 ├── src/
 │   ├── index.ts              # Main entry point
 │   ├── daemon.ts             # Daemon orchestration
@@ -327,7 +327,7 @@ rss-daemon/
 │   ├── cli.ts                # CLI interface
 │   └── config.ts             # Configuration loader
 ├── daemon/
-│   ├── com.user.rss-daemon.plist  # Launchd config
+│   ├── com.user.fressh.plist  # Launchd config
 │   └── install.sh            # Installation script
 ├── test/
 │   └── *.test.ts             # Unit tests
@@ -359,7 +359,7 @@ rss-daemon/
 
 ## Deployment
 
-### Launchd Configuration: `com.user.rss-daemon.plist`
+### Launchd Configuration: `com.user.fressh.plist`
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -368,12 +368,12 @@ rss-daemon/
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.user.rss-daemon</string>
+    <string>com.user.fressh</string>
 
     <key>ProgramArguments</key>
     <array>
         <string>/usr/local/bin/node</string>
-        <string>/Users/USERNAME/rss-daemon/dist/index.js</string>
+        <string>/Users/USERNAME/fressh/dist/index.js</string>
     </array>
 
     <key>RunAtLoad</key>
@@ -383,10 +383,10 @@ rss-daemon/
     <true/>
 
     <key>StandardOutPath</key>
-    <string>/Users/USERNAME/Library/Logs/rss-daemon/stdout.log</string>
+    <string>/Users/USERNAME/Library/Logs/fressh/stdout.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/USERNAME/Library/Logs/rss-daemon/stderr.log</string>
+    <string>/Users/USERNAME/Library/Logs/fressh/stderr.log</string>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -400,7 +400,7 @@ rss-daemon/
 ### Installation
 ```bash
 # Install daemon
-cd ~/rss-daemon
+cd ~/fressh
 npm install
 npm run build
 
@@ -408,10 +408,10 @@ npm run build
 bash daemon/install.sh
 
 # Import feeds from NetNewsWire
-rss-daemon import ~/Downloads/subscriptions.opml
+fressh import ~/Downloads/subscriptions.opml
 
 # Check status
-rss-daemon stats
+fressh stats
 ```
 
 ---
@@ -421,11 +421,11 @@ rss-daemon stats
 ### Replace NetNewsWire Service
 
 ```typescript
-// src/services/rss-daemon.ts
+// src/services/fressh.ts
 import Database from 'better-sqlite3';
 
 const RSS_DB_PATH = process.env.RSS_DAEMON_DB ||
-  `${process.env.HOME}/Library/Application Support/rss-daemon/articles.db`;
+  `${process.env.HOME}/Library/Application Support/fressh/articles.db`;
 
 class RssDaemonService {
   /**
@@ -530,13 +530,13 @@ const rssSyncTask = cron.schedule(
 
 ### Import to RSS Daemon
 ```bash
-rss-daemon import ~/Downloads/subscriptions.opml
+fressh import ~/Downloads/subscriptions.opml
 ```
 
 ### Test & Verify
 ```bash
 # Wait a few minutes for initial fetch
-rss-daemon stats
+fressh stats
 
 # Should show:
 # Feeds: 45
@@ -547,7 +547,7 @@ rss-daemon stats
 ### Switch jarvis Configuration
 ```bash
 # In .env
-RSS_READER=rss-daemon  # instead of netnewswire
+RSS_READER=fressh  # instead of netnewswire
 ```
 
 ---

@@ -18,7 +18,7 @@ export interface FetchOptions {
 export async function fetchFeed(url: string, options: FetchOptions = {}): Promise<FetchResult | null> {
   const {
     timeout = 30000,
-    userAgent = 'rss-daemon/1.0',
+    userAgent = 'fressh/1.0',
     lastModified,
     etag,
   } = options;

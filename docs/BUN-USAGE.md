@@ -51,7 +51,7 @@ bash daemon/install.sh
 
 # The daemon now runs in the background
 # Check status:
-launchctl list | grep rss-daemon
+launchctl list | grep fressh
 ```
 
 ## Why Bun?
@@ -73,7 +73,7 @@ The database is just SQLite - query it directly:
 ```python
 import sqlite3
 db = sqlite3.connect(
-    os.path.expanduser('~/Library/Application Support/rss-daemon/articles.db')
+    os.path.expanduser('~/Library/Application Support/fressh/articles.db')
 )
 
 # Get unread

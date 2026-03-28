@@ -11,6 +11,7 @@ import {
   handleMarkFeedRead,
   handleCleanup,
   handleDeleteShorts,
+  handleRemoveDuplicates,
   handleRebuildSearchIndex,
   handleRefresh,
   handleStart,
@@ -78,6 +79,11 @@ program
   .command('delete-shorts')
   .description('Delete all YouTube Shorts from the database')
   .action(handleDeleteShorts);
+
+program
+  .command('remove-duplicates')
+  .description('Remove duplicate URLs from the database')
+  .action(handleRemoveDuplicates);
 
 program
   .command('refresh')

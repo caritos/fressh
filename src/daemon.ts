@@ -69,7 +69,7 @@ export class Daemon {
 
     const feeds = database.getAllFeeds();
     if (feeds.length === 0) {
-      logger.warn('No feeds to fetch. Import feeds using: rss-daemon import <opml-file>');
+      logger.warn('No feeds to fetch. Import feeds using: fressh import <opml-file>');
       return;
     }
 

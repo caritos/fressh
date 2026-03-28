@@ -322,12 +322,11 @@ class DatabaseManager {
     if (articles.length === 0)
       return 0;
     const insertStmt = this.db.prepare(`
-      INSERT INTO articles (
+      INSERT OR IGNORE INTO articles (
         feed_id, guid, title, url, author,
         content_html, content_text, summary, published_at
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(feed_id, guid) DO NOTHING
     `);
     const transaction = this.db.transaction((articles2) => {
       let insertCount = 0;
@@ -401,6 +400,28 @@ class DatabaseManager {
       WHERE url LIKE '%youtube.com/shorts/%' OR url LIKE '%youtu.be/shorts/%'
     `).run();
     return result.changes;
+  }
+  removeDuplicateUrls() {
+    if (!this.db)
+      throw new Error("Database not initialized");
+    const result = this.db.prepare(`
+      DELETE FROM articles
+      WHERE id NOT IN (
+        SELECT MIN(id)
+        FROM articles
+        WHERE url IS NOT NULL
+        GROUP BY url
+      ) AND url IS NOT NULL
+    `).run();
+    const deletedCount = result.changes || 0;
+    logger.info(`Removed ${deletedCount} duplicate URLs`);
+    try {
+      this.db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_articles_url_unique ON articles(url) WHERE url IS NOT NULL");
+      logger.info("Created unique index on article URLs");
+    } catch (error) {
+      logger.warn("Could not create unique URL index (may already exist):", error);
+    }
+    return deletedCount;
   }
   searchArticles(query, feedId, showUnreadOnly = true) {
     if (!this.db)
@@ -481,7 +502,7 @@ import axios from "axios";
 async function fetchFeed(url, options = {}) {
   const {
     timeout = 30000,
-    userAgent = "rss-daemon/1.0",
+    userAgent = "fressh/1.0",
     lastModified,
     etag
   } = options;
@@ -682,7 +703,7 @@ async function scrapePinboardPopular(timeout = 30000) {
     logger.debug("Fetching Pinboard popular page...");
     const response = await axios2.get("https://pinboard.in/popular/", {
       headers: {
-        "User-Agent": "rss-daemon/1.0"
+        "User-Agent": "fressh/1.0"
       },
       timeout
     });
@@ -804,7 +825,7 @@ class Daemon {
     logger.info("--- Fetch Cycle Starting ---");
     const feeds = database.getAllFeeds();
     if (feeds.length === 0) {
-      logger.warn("No feeds to fetch. Import feeds using: rss-daemon import <opml-file>");
+      logger.warn("No feeds to fetch. Import feeds using: fressh import <opml-file>");
       return;
     }
     logger.info(`Fetching ${feeds.length} feeds (max ${this.config.maxConcurrentFetches} concurrent)...`);
@@ -986,6 +1007,7 @@ class ArticleViewer {
   searchMode = false;
   searchQuery = "";
   currentPane = "articles";
+  currentAISummary = null;
   constructor() {
     this.screen = blessed.screen({
       smartCSR: true,
@@ -1246,6 +1268,11 @@ class ArticleViewer {
         this.summarizeArticle();
       }
     });
+    this.screen.key(["c", "C"], () => {
+      if (!this.showingHelp) {
+        this.copyArticleToClipboard();
+      }
+    });
     this.screen.key(["/"], () => {
       if (!this.showingHelp && !this.searchMode) {
         this.enterSearch();
@@ -1436,6 +1463,7 @@ class ArticleViewer {
     const article = this.articles[index];
     if (!article)
       return;
+    this.currentAISummary = null;
     const publishedDate = article.published_at ? new Date(article.published_at).toLocaleDateString() + " " + new Date(article.published_at).toLocaleTimeString() : "Unknown date";
     const title = (article.title || "Untitled").replace(/[^\x20-\x7E]/g, "");
     const feed = (article.feed_title || "Unknown").replace(/[^\x20-\x7E]/g, "");
@@ -1507,6 +1535,54 @@ ${contentPreview}`;
     this.showArticleDetail(this.selectedArticleIndex);
     this.updateStatusBar();
     this.screen.render();
+  }
+  copyArticleToClipboard() {
+    const index = this.articleList.selected;
+    const article = this.articles[index];
+    if (!article) {
+      this.updateStatusBar("No article selected");
+      return;
+    }
+    const title = article.title || "Untitled";
+    const url = article.url || "No URL";
+    const author = article.author || "Unknown";
+    const publishedDate = article.published_at ? new Date(article.published_at).toLocaleString() : "Unknown date";
+    const feed = article.feed_title || "Unknown";
+    const content = article.content_text || article.content_html || article.summary || "No content available";
+    let clipboardContent = `${title}
+
+URL: ${url}
+Feed: ${feed}
+Author: ${author}
+Published: ${publishedDate}`;
+    if (this.currentAISummary) {
+      clipboardContent += `
+Tags: ${this.currentAISummary.tags.length > 0 ? this.currentAISummary.tags.join(", ") : "none"}`;
+      clipboardContent += `
+
+========================================
+AI SUMMARY
+========================================
+
+${this.currentAISummary.summary}`;
+    }
+    clipboardContent += `
+
+---
+
+${content}`;
+    const pbcopy = spawn("pbcopy");
+    pbcopy.stdin.write(clipboardContent);
+    pbcopy.stdin.end();
+    pbcopy.on("close", (code) => {
+      if (code === 0) {
+        const summaryNote = this.currentAISummary ? " (with AI summary)" : "";
+        this.updateStatusBar(`Copied "${title}" to clipboard${summaryNote}`);
+      } else {
+        this.updateStatusBar("Failed to copy to clipboard");
+      }
+      this.screen.render();
+    });
   }
   openInBrowser() {
     const index = this.articleList.selected;
@@ -1697,6 +1773,7 @@ ${contentPreview}`;
         author: article.author,
         url: article.url
       }, contentType);
+      this.currentAISummary = { summary, tags };
       this.displaySummary(article, summary, tags);
       this.updateStatusBar("AI summary generated successfully");
       setTimeout(() => this.updateStatusBar(), 3000);
@@ -1733,7 +1810,7 @@ ${contentPreview}`;
     return arg.replace(/\\/g, "\\\\").replace(/"/g, "\\\"").replace(/`/g, "\\`").replace(/\$/g, "\\$").replace(/!/g, "\\!");
   }
   async fetchYouTubeTranscript(url) {
-    const tempDir = join3(tmpdir(), "rss-daemon");
+    const tempDir = join3(tmpdir(), "fressh");
     const videoId = this.extractYouTubeVideoId(url);
     if (!videoId) {
       throw new Error("Invalid YouTube URL");
@@ -1831,7 +1908,7 @@ ${contentPreview}`;
     }
   }
   async generateAISummary(content, metadata, contentType = "article") {
-    const tempDir = join3(tmpdir(), "rss-daemon");
+    const tempDir = join3(tmpdir(), "fressh");
     const tempFile = join3(tempDir, `prompt-${Date.now()}.txt`);
     try {
       await mkdir(tempDir, { recursive: true });
@@ -1992,6 +2069,7 @@ ${summary}`;
 {yellow-fg}Reading Articles{/yellow-fg}
   Enter         Open article in browser (marks as read)
   I             Generate AI summary of article (marks as read)
+  C             Copy article content to clipboard (pbcopy)
   Space         Toggle read/unread status
   S             Toggle starred status
 
@@ -2373,7 +2451,7 @@ async function handleMarkFeedRead(url) {
   if (!feed) {
     console.log("❌ Feed not found");
     console.log(`
-\uD83D\uDCA1 List all feeds with: rss-daemon list`);
+\uD83D\uDCA1 List all feeds with: fressh list`);
     database.close();
     return;
   }
@@ -2398,6 +2476,16 @@ async function handleDeleteShorts() {
   const deleted = database.deleteYouTubeShorts();
   console.log(`
 ✅ Deleted ${deleted} YouTube Shorts from the database`);
+  database.close();
+}
+async function handleRemoveDuplicates() {
+  const config = loadConfig();
+  logger.setLevel(config.logLevel);
+  database.initialize(config.databasePath);
+  console.log("Removing duplicate URLs...");
+  const deleted = database.removeDuplicateUrls();
+  console.log(`
+✅ Removed ${deleted} duplicate articles`);
   database.close();
 }
 async function handleRebuildSearchIndex() {
@@ -2433,7 +2521,7 @@ async function handleLogs(options) {
   const { join: join4 } = await import("path");
   const { existsSync: existsSync5, readFileSync: readFileSync3 } = await import("fs");
   const { spawn: spawn2 } = await import("child_process");
-  const logFile = join4(homedir3(), "Library", "Logs", "rss-daemon", "daemon.log");
+  const logFile = join4(homedir3(), "Library", "Logs", "fressh", "daemon.log");
   if (!existsSync5(logFile)) {
     console.log("❌ Log file not found at:", logFile);
     console.log(`
@@ -2465,7 +2553,7 @@ The daemon may not have been started yet, or file logging is not enabled.`);
 }
 async function getYouTubeChannelId(url) {
   try {
-    const response = await fetchFeed(url, { timeout: 1e4, userAgent: "rss-daemon/1.0" });
+    const response = await fetchFeed(url, { timeout: 1e4, userAgent: "fressh/1.0" });
     if (!response)
       return null;
     const match = response.data.match(/channel_id=([a-zA-Z0-9_-]{24})/);
@@ -2504,7 +2592,7 @@ async function handleRead(options) {
     console.log(`
 \uD83D\uDCED No articles found`);
     console.log(`
-\uD83D\uDCA1 The daemon needs to fetch feeds first: rss-daemon start`);
+\uD83D\uDCA1 The daemon needs to fetch feeds first: fressh start`);
     database.close();
     return;
   }
@@ -2526,7 +2614,7 @@ async function handleRead(options) {
     }
     console.log("");
   }
-  console.log(`\uD83D\uDCA1 Use 'rss-daemon view' for an interactive interface`);
+  console.log(`\uD83D\uDCA1 Use 'fressh view' for an interactive interface`);
   database.close();
 }
 async function handleTest(url) {
@@ -2652,6 +2740,7 @@ program.command("mark-all-read").description("Mark all articles as read").action
 program.command("mark-feed-read <url>").description("Mark all articles from a specific feed as read").action(handleMarkFeedRead);
 program.command("cleanup").description("Delete old read articles").option("-d, --days <days>", "Delete articles older than N days", "30").action((options) => handleCleanup(parseInt(options.days, 10)));
 program.command("delete-shorts").description("Delete all YouTube Shorts from the database").action(handleDeleteShorts);
+program.command("remove-duplicates").description("Remove duplicate URLs from the database").action(handleRemoveDuplicates);
 program.command("refresh").description("Force refresh all feeds").action(handleRefresh);
 program.command("test <url>").description("Test if an RSS feed is valid").action(handleTest);
 program.command("list").description("List all feeds").action(handleList);
@@ -2667,5 +2756,5 @@ program.command("read").description("List recent articles in the terminal").opti
 program.command("rebuild-search").description("Rebuild the full-text search index").action(handleRebuildSearchIndex);
 program.parse();
 
-//# debugId=8A96507F55908DD264756E2164756E21
+//# debugId=D08C680E8E54FCE564756E2164756E21
 //# sourceMappingURL=index.js.map

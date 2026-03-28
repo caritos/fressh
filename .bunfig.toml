@@ -1,0 +1,15 @@
+# Bun configuration
+[install]
+# Use exact versions
+exact = false
+
+# Production dependencies only for smaller install
+production = false
+
+[test]
+# Test configuration
+preload = []
+
+[run]
+# Enable shell completions
+shell = "bash"

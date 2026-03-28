@@ -1,7 +1,7 @@
 import { database } from '../src/database.js';
 import { unlinkSync, existsSync } from 'fs';
 
-const TEST_DB = '/tmp/test-rss-daemon.db';
+const TEST_DB = '/tmp/test-fressh.db';
 
 // Clean up before test
 if (existsSync(TEST_DB)) {
