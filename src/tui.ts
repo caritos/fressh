@@ -39,7 +39,7 @@ export class ArticleViewer {
   private searchMode = false;
   private searchQuery = '';
   private currentPane: 'feeds' | 'articles' = 'articles';
-  private currentAISummary: { summary: string; tags: string[] } | null = null;
+  private currentAISummary: { summary: string; tags: string[]; articleId?: number } | null = null;
 
   constructor() {
     // Create screen
@@ -618,7 +618,13 @@ export class ArticleViewer {
     const article = this.articles[index];
     if (!article) return;
 
-    // Clear any previous AI summary when switching articles
+    // If we have an AI summary for this specific article, display it instead
+    if (this.currentAISummary && this.currentAISummary.articleId === article.id) {
+      this.displaySummary(article, this.currentAISummary.summary, this.currentAISummary.tags);
+      return;
+    }
+
+    // Clear any previous AI summary when switching to a different article
     this.currentAISummary = null;
 
     // Use simpler date formatting for speed
@@ -1065,8 +1071,8 @@ ${content}`;
         url: article.url,
       }, contentType);
 
-      // Store the AI summary so it can be copied to clipboard
-      this.currentAISummary = { summary, tags };
+      // Store the AI summary so it can be copied to clipboard and preserved on updates
+      this.currentAISummary = { summary, tags, articleId: article.id };
 
       // Display summary in detail pane
       this.displaySummary(article, summary, tags);

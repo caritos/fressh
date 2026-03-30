@@ -1485,6 +1485,10 @@ class ArticleViewer {
     const article = this.articles[index];
     if (!article)
       return;
+    if (this.currentAISummary && this.currentAISummary.articleId === article.id) {
+      this.displaySummary(article, this.currentAISummary.summary, this.currentAISummary.tags);
+      return;
+    }
     this.currentAISummary = null;
     const publishedDate = article.published_at ? new Date(article.published_at).toLocaleDateString() + " " + new Date(article.published_at).toLocaleTimeString() : "Unknown date";
     const title = (article.title || "Untitled").replace(/[^\x20-\x7E]/g, "");
@@ -1795,7 +1799,7 @@ ${content}`;
         author: article.author,
         url: article.url
       }, contentType);
-      this.currentAISummary = { summary, tags };
+      this.currentAISummary = { summary, tags, articleId: article.id };
       this.displaySummary(article, summary, tags);
       this.updateStatusBar("AI summary generated successfully");
       setTimeout(() => this.updateStatusBar(), 3000);
@@ -2781,5 +2785,5 @@ program.command("read").description("List recent articles in the terminal").opti
 program.command("rebuild-search").description("Rebuild the full-text search index").action(handleRebuildSearchIndex);
 program.parse();
 
-//# debugId=0D4EB6A50A14C95F64756E2164756E21
+//# debugId=C2BAC833746370CA64756E2164756E21
 //# sourceMappingURL=index.js.map
