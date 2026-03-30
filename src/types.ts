@@ -7,6 +7,7 @@ export interface Config {
   userAgent: string;
   excludeYouTubeShorts?: boolean; // filter out YouTube Shorts from feeds
   maxArticleAgeDays?: number; // only process articles published within this many days (0 = no limit)
+  allowInsecureCertificates?: boolean; // allow expired/self-signed certificates
 }
 
 export interface Feed {

@@ -12,6 +12,7 @@ const DEFAULT_CONFIG: Config = {
   userAgent: 'fressh/1.0',
   excludeYouTubeShorts: false, // disabled by default for backward compatibility
   maxArticleAgeDays: 30, // only process articles published within last 30 days
+  allowInsecureCertificates: false, // disabled by default for security
 };
 
 function expandPath(path: string): string {

@@ -104,6 +104,7 @@ export async function handleAdd(url: string): Promise<void> {
   const fetchResult = await fetchFeed(feedUrl, {
     timeout: config.httpTimeout,
     userAgent: config.userAgent,
+    allowInsecureCertificates: config.allowInsecureCertificates,
   });
 
   if (!fetchResult) {
@@ -482,6 +483,7 @@ export async function handleTest(url: string): Promise<void> {
   const fetchResult = await fetchFeed(testUrl, {
     timeout: config.httpTimeout,
     userAgent: config.userAgent,
+    allowInsecureCertificates: config.allowInsecureCertificates,
   });
 
   if (!fetchResult) {

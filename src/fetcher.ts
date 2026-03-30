@@ -1,4 +1,5 @@
 import axios, { AxiosError } from 'axios';
+import https from 'https';
 import { logger } from './logger.js';
 
 export interface FetchResult {
@@ -13,6 +14,7 @@ export interface FetchOptions {
   userAgent?: string;
   lastModified?: string;
   etag?: string;
+  allowInsecureCertificates?: boolean;
 }
 
 export async function fetchFeed(url: string, options: FetchOptions = {}): Promise<FetchResult | null> {
@@ -21,6 +23,7 @@ export async function fetchFeed(url: string, options: FetchOptions = {}): Promis
     userAgent = 'fressh/1.0',
     lastModified,
     etag,
+    allowInsecureCertificates = false,
   } = options;
 
   try {
@@ -38,9 +41,15 @@ export async function fetchFeed(url: string, options: FetchOptions = {}): Promis
 
     logger.debug(`Fetching ${url}`);
 
+    // Configure HTTPS agent to handle certificate issues
+    const httpsAgent = allowInsecureCertificates
+      ? new https.Agent({ rejectUnauthorized: false })
+      : undefined;
+
     const response = await axios.get(url, {
       headers,
       timeout,
+      httpsAgent,
       validateStatus: (status) => status < 500, // Don't throw on 4xx errors
     });
 

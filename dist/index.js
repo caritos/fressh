@@ -499,12 +499,14 @@ var init_database = __esm(() => {
 
 // src/fetcher.ts
 import axios from "axios";
+import https from "https";
 async function fetchFeed(url, options = {}) {
   const {
     timeout = 30000,
     userAgent = "fressh/1.0",
     lastModified,
-    etag
+    etag,
+    allowInsecureCertificates = false
   } = options;
   try {
     const headers = {
@@ -517,9 +519,11 @@ async function fetchFeed(url, options = {}) {
       headers["If-None-Match"] = etag;
     }
     logger.debug(`Fetching ${url}`);
+    const httpsAgent = allowInsecureCertificates ? new https.Agent({ rejectUnauthorized: false }) : undefined;
     const response = await axios.get(url, {
       headers,
       timeout,
+      httpsAgent,
       validateStatus: (status) => status < 500
     });
     if (response.status === 304) {
@@ -565,9 +569,25 @@ function isYouTubeShort(url) {
     return false;
   return url.includes("youtube.com/shorts/") || url.includes("youtu.be/shorts/");
 }
+function sanitizeXml(xml) {
+  return xml.replace(/&([^a-zA-Z#]|[a-zA-Z]+[^a-zA-Z0-9;])/g, "&amp;$1");
+}
+function isHtmlPage(content) {
+  const trimmed = content.trim();
+  if (trimmed.startsWith("<!DOCTYPE html") || trimmed.startsWith("<html")) {
+    return true;
+  }
+  const firstPart = trimmed.slice(0, 1000).toLowerCase();
+  return firstPart.includes("<head>") || firstPart.includes("<body>") || firstPart.includes("<html") && !firstPart.includes("<rss") && !firstPart.includes("<feed");
+}
 async function parseFeed(feedContent, config) {
   try {
-    const feed = await parser.parseString(feedContent);
+    if (isHtmlPage(feedContent)) {
+      logger.error("This appears to be an HTML page, not an RSS/Atom feed");
+      return null;
+    }
+    const sanitizedContent = sanitizeXml(feedContent);
+    const feed = await parser.parseString(sanitizedContent);
     if (!feed || !feed.items) {
       logger.error("Invalid feed structure - no items found");
       return null;
@@ -828,9 +848,10 @@ class Daemon {
       logger.warn("No feeds to fetch. Import feeds using: fressh import <opml-file>");
       return;
     }
-    logger.info(`Fetching ${feeds.length} feeds (max ${this.config.maxConcurrentFetches} concurrent)...`);
+    const rssFeeds = feeds.filter((feed) => feed.url !== "https://pinboard.in/popular/");
+    logger.info(`Fetching ${rssFeeds.length} feeds (max ${this.config.maxConcurrentFetches} concurrent)...`);
     const limit = pLimit(this.config.maxConcurrentFetches);
-    const promises = feeds.map((feed) => limit(() => this.fetchOne(feed)));
+    const promises = rssFeeds.map((feed) => limit(() => this.fetchOne(feed)));
     const results = await Promise.allSettled(promises);
     let successful = 0;
     let failed = 0;
@@ -852,7 +873,7 @@ class Daemon {
     }
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
     logger.info(`--- Fetch Cycle Complete ---`);
-    logger.info(`Total: ${feeds.length} feeds | Success: ${successful} | Not Modified: ${notModified} | Failed: ${failed}`);
+    logger.info(`Total: ${rssFeeds.length} feeds | Success: ${successful} | Not Modified: ${notModified} | Failed: ${failed}`);
     logger.info(`New articles: ${newArticles} | Duration: ${duration}s`);
     const nextFetch = new Date(Date.now() + this.config.fetchInterval * 1000);
     logger.info(`Next fetch scheduled for: ${nextFetch.toLocaleString()}`);
@@ -864,7 +885,8 @@ class Daemon {
         timeout: this.config.httpTimeout,
         userAgent: this.config.userAgent,
         lastModified: feed.last_modified,
-        etag: feed.etag
+        etag: feed.etag,
+        allowInsecureCertificates: this.config.allowInsecureCertificates
       });
       if (!result) {
         logger.debug(`Not modified: ${feed.title || feed.url}`);
@@ -2137,7 +2159,8 @@ var DEFAULT_CONFIG = {
   httpTimeout: 30000,
   userAgent: "fressh/1.0",
   excludeYouTubeShorts: false,
-  maxArticleAgeDays: 30
+  maxArticleAgeDays: 30,
+  allowInsecureCertificates: false
 };
 function expandPath(path) {
   if (path.startsWith("~/")) {
@@ -2348,7 +2371,8 @@ async function handleAdd(url) {
   console.log(`Validating feed...`);
   const fetchResult = await fetchFeed(feedUrl, {
     timeout: config.httpTimeout,
-    userAgent: config.userAgent
+    userAgent: config.userAgent,
+    allowInsecureCertificates: config.allowInsecureCertificates
   });
   if (!fetchResult) {
     console.log("❌ Failed to fetch feed");
@@ -2664,7 +2688,8 @@ async function handleTest(url) {
   console.log("Fetching...");
   const fetchResult = await fetchFeed(testUrl, {
     timeout: config.httpTimeout,
-    userAgent: config.userAgent
+    userAgent: config.userAgent,
+    allowInsecureCertificates: config.allowInsecureCertificates
   });
   if (!fetchResult) {
     console.log("❌ Failed to fetch feed");
@@ -2756,5 +2781,5 @@ program.command("read").description("List recent articles in the terminal").opti
 program.command("rebuild-search").description("Rebuild the full-text search index").action(handleRebuildSearchIndex);
 program.parse();
 
-//# debugId=D08C680E8E54FCE564756E2164756E21
+//# debugId=0D4EB6A50A14C95F64756E2164756E21
 //# sourceMappingURL=index.js.map

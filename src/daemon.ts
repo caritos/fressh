@@ -73,12 +73,15 @@ export class Daemon {
       return;
     }
 
-    logger.info(`Fetching ${feeds.length} feeds (max ${this.config.maxConcurrentFetches} concurrent)...`);
+    // Filter out Pinboard Popular - it's handled by separate scraper
+    const rssFeeds = feeds.filter(feed => feed.url !== 'https://pinboard.in/popular/');
+
+    logger.info(`Fetching ${rssFeeds.length} feeds (max ${this.config.maxConcurrentFetches} concurrent)...`);
 
     // Limit concurrent fetches
     const limit = pLimit(this.config.maxConcurrentFetches);
 
-    const promises = feeds.map((feed) =>
+    const promises = rssFeeds.map((feed) =>
       limit(() => this.fetchOne(feed))
     );
 
@@ -107,7 +110,7 @@ export class Daemon {
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
     logger.info(`--- Fetch Cycle Complete ---`);
-    logger.info(`Total: ${feeds.length} feeds | Success: ${successful} | Not Modified: ${notModified} | Failed: ${failed}`);
+    logger.info(`Total: ${rssFeeds.length} feeds | Success: ${successful} | Not Modified: ${notModified} | Failed: ${failed}`);
     logger.info(`New articles: ${newArticles} | Duration: ${duration}s`);
 
     // Log next fetch time
@@ -125,6 +128,7 @@ export class Daemon {
         userAgent: this.config.userAgent,
         lastModified: feed.last_modified,
         etag: feed.etag,
+        allowInsecureCertificates: this.config.allowInsecureCertificates,
       });
 
       // Handle 304 Not Modified
