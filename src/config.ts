@@ -9,7 +9,7 @@ const DEFAULT_CONFIG: Config = {
   fetchInterval: 900, // 15 minutes
   maxConcurrentFetches: 5,
   httpTimeout: 30000, // 30 seconds
-  userAgent: 'fressh/1.0',
+  userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
   excludeYouTubeShorts: false, // disabled by default for backward compatibility
   maxArticleAgeDays: 30, // only process articles published within last 30 days
   allowInsecureCertificates: false, // disabled by default for security

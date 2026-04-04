@@ -503,14 +503,16 @@ import https from "https";
 async function fetchFeed(url, options = {}) {
   const {
     timeout = 30000,
-    userAgent = "fressh/1.0",
+    userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     lastModified,
     etag,
     allowInsecureCertificates = false
   } = options;
   try {
     const headers = {
-      "User-Agent": userAgent
+      "User-Agent": userAgent,
+      Accept: "application/rss+xml, application/xml, text/xml, */*",
+      "Accept-Language": "en-US,en;q=0.9"
     };
     if (lastModified) {
       headers["If-Modified-Since"] = lastModified;
@@ -723,7 +725,7 @@ async function scrapePinboardPopular(timeout = 30000) {
     logger.debug("Fetching Pinboard popular page...");
     const response = await axios2.get("https://pinboard.in/popular/", {
       headers: {
-        "User-Agent": "fressh/1.0"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
       },
       timeout
     });
@@ -731,7 +733,15 @@ async function scrapePinboardPopular(timeout = 30000) {
       logger.error(`HTTP ${response.status} when fetching Pinboard popular page`);
       return [];
     }
-    const $ = cheerio.load(response.data);
+    let html = response.data;
+    if (typeof html === "string") {
+      html = html.replace(/&#x[0-9A-Fa-f]*[^0-9A-Fa-f;][^;]*;?/g, "");
+      html = html.replace(/&#[0-9]*[^0-9;][^;]*;?/g, "");
+    }
+    const $ = cheerio.load(html, {
+      xmlMode: false,
+      decodeEntities: false
+    });
     const links = [];
     $(".bookmark").each((_, element) => {
       const $bookmark = $(element);
@@ -790,6 +800,104 @@ var init_pinboard_scraper = __esm(() => {
   init_logger();
 });
 
+// src/hackernews-scraper.ts
+import * as cheerio2 from "cheerio";
+import axios3 from "axios";
+async function scrapeHackerNews(timeout = 30000) {
+  try {
+    logger.debug("Fetching Hacker News front page...");
+    const response = await axios3.get("https://news.ycombinator.com/news", {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      },
+      timeout
+    });
+    if (response.status !== 200) {
+      logger.error(`HTTP ${response.status} when fetching Hacker News`);
+      return [];
+    }
+    const $ = cheerio2.load(response.data);
+    const items = [];
+    $(".athing").each((_, element) => {
+      const $story = $(element);
+      const rank = parseInt($story.find(".rank").text().replace(".", ""), 10);
+      const $titleLink = $story.find(".titleline > a").first();
+      const title = $titleLink.text().trim();
+      let url = $titleLink.attr("href");
+      if (!title || !url)
+        return;
+      if (url.startsWith("item?id=")) {
+        url = `https://news.ycombinator.com/${url}`;
+      }
+      const $subtext = $story.next(".subtext");
+      const pointsText = $subtext.find(".score").text();
+      const pointsMatch = pointsText.match(/(\d+) point/);
+      const points = pointsMatch ? parseInt(pointsMatch[1], 10) : 0;
+      const author = $subtext.find(".hnuser").text() || undefined;
+      const commentsText = $subtext.find("a").last().text();
+      const commentsMatch = commentsText.match(/(\d+)\s+comment/);
+      const commentCount = commentsMatch ? parseInt(commentsMatch[1], 10) : 0;
+      const ageText = $subtext.find(".age").attr("title");
+      let timestamp;
+      if (ageText) {
+        timestamp = new Date(ageText);
+      } else {
+        timestamp = new Date;
+      }
+      items.push({
+        url,
+        title,
+        points,
+        author,
+        commentCount,
+        timestamp,
+        rank
+      });
+    });
+    logger.info(`Scraped ${items.length} stories from Hacker News`);
+    return items;
+  } catch (error) {
+    if (axios3.isAxiosError(error)) {
+      logger.error(`Error fetching Hacker News: ${error.message}`);
+    } else {
+      logger.error("Unexpected error scraping Hacker News:", error);
+    }
+    return [];
+  }
+}
+function convertHackerNewsToArticles(items, feedId) {
+  return items.map((item) => {
+    const metadataParts = [];
+    if (item.points !== undefined) {
+      metadataParts.push(`${item.points} points`);
+    }
+    if (item.author) {
+      metadataParts.push(`by ${item.author}`);
+    }
+    if (item.commentCount) {
+      metadataParts.push(`${item.commentCount} comments`);
+    }
+    if (item.rank) {
+      metadataParts.push(`#${item.rank}`);
+    }
+    const content_html = metadataParts.length > 0 ? `<p>${metadataParts.join(" | ")}</p>` : undefined;
+    const summary = metadataParts.length > 0 ? metadataParts.join(" | ") : undefined;
+    return {
+      guid: item.url,
+      title: item.title,
+      url: item.url,
+      author: item.author,
+      content_html,
+      content_text: undefined,
+      summary,
+      published_at: item.timestamp || new Date
+    };
+  });
+}
+var init_hackernews_scraper = __esm(() => {
+  init_logger();
+});
+
 // src/logo.ts
 var CLI_BANNER = `
      ↗
@@ -836,6 +944,9 @@ class Daemon {
     this.ensurePinboardFeed();
     await this.scrapePinboard();
     this.scheduler.schedule("0 9 * * *", "scrape-pinboard", () => this.scrapePinboard());
+    this.ensureHackerNewsFeed();
+    await this.scrapeHackerNews();
+    this.scheduler.schedule("0 */4 * * *", "scrape-hackernews", () => this.scrapeHackerNews());
     logger.info("Daemon started successfully");
     logger.info("Press Ctrl+C to stop");
     await this.waitForShutdown();
@@ -848,7 +959,7 @@ class Daemon {
       logger.warn("No feeds to fetch. Import feeds using: fressh import <opml-file>");
       return;
     }
-    const rssFeeds = feeds.filter((feed) => feed.url !== "https://pinboard.in/popular/");
+    const rssFeeds = feeds.filter((feed) => feed.url !== "https://pinboard.in/popular/" && feed.url !== "https://news.ycombinator.com/news");
     logger.info(`Fetching ${rssFeeds.length} feeds (max ${this.config.maxConcurrentFetches} concurrent)...`);
     const limit = pLimit(this.config.maxConcurrentFetches);
     const promises = rssFeeds.map((feed) => limit(() => this.fetchOne(feed)));
@@ -987,6 +1098,52 @@ class Daemon {
       logger.error("Error scraping Pinboard:", error);
     }
   }
+  ensureHackerNewsFeed() {
+    const hnUrl = "https://news.ycombinator.com/news";
+    const existingFeed = database.getFeed(hnUrl);
+    if (!existingFeed) {
+      const feedId = database.addFeed({
+        url: hnUrl,
+        title: "Hacker News",
+        site_url: "https://news.ycombinator.com",
+        enabled: 1
+      });
+      logger.info(`Added Hacker News feed (ID: ${feedId})`);
+    }
+  }
+  async scrapeHackerNews() {
+    const hnUrl = "https://news.ycombinator.com/news";
+    try {
+      logger.info("--- Scraping Hacker News ---");
+      const items = await scrapeHackerNews(this.config.httpTimeout);
+      if (items.length === 0) {
+        logger.warn("No stories found on Hacker News");
+        return;
+      }
+      const feed = database.getFeed(hnUrl);
+      if (!feed || !feed.id) {
+        logger.error("Hacker News feed not found in database");
+        return;
+      }
+      const articles = convertHackerNewsToArticles(items, feed.id).map((article) => ({
+        ...article,
+        feed_id: feed.id
+      }));
+      const newCount = database.addArticles(articles);
+      database.updateFeedMetadata(feed.id, {
+        last_fetch: new Date,
+        title: "Hacker News"
+      });
+      if (newCount > 0) {
+        logger.info(`✓ Hacker News: ${newCount} new stories`);
+      } else {
+        logger.debug(`✓ Hacker News: no new stories`);
+      }
+      logger.info(`--- Hacker News Scraping Complete (${newCount} new) ---`);
+    } catch (error) {
+      logger.error("Error scraping Hacker News:", error);
+    }
+  }
 }
 var init_daemon = __esm(() => {
   init_database();
@@ -995,6 +1152,7 @@ var init_daemon = __esm(() => {
   init_logger();
   init_scheduler();
   init_pinboard_scraper();
+  init_hackernews_scraper();
 });
 
 // src/tui.ts
@@ -1009,8 +1167,8 @@ import { promisify } from "util";
 import { writeFile, unlink, mkdir, readFile } from "fs/promises";
 import { tmpdir } from "os";
 import { join as join3 } from "path";
-import axios3 from "axios";
-import * as cheerio2 from "cheerio";
+import axios4 from "axios";
+import * as cheerio3 from "cheerio";
 
 class ArticleViewer {
   screen;
@@ -1033,7 +1191,9 @@ class ArticleViewer {
   constructor() {
     this.screen = blessed.screen({
       smartCSR: true,
-      title: "fressh - RSS Article Viewer"
+      title: "fressh - RSS Article Viewer",
+      fullUnicode: true,
+      forceUnicode: true
     });
     this.feedList = blessed.list({
       parent: this.screen,
@@ -1449,13 +1609,15 @@ class ArticleViewer {
     const title = (article.title || "Untitled").replace(/[^\x20-\x7E]/g, "");
     const readIndicator = article.read ? " " : "*";
     const starIndicator = article.starred ? "S" : " ";
-    const maxTitleLength = 30;
+    const listWidth = this.articleList.width;
+    const maxTitleLength = Math.max(20, listWidth - 9);
     const truncatedTitle = title.length > maxTitleLength ? title.substring(0, maxTitleLength - 3) + "..." : title;
     return `${readIndicator} ${starIndicator} ${truncatedTitle}`;
   }
   formatFeedListItem(feed) {
     const title = feed.title.replace(/[^\x20-\x7E]/g, "");
-    const maxTitleLength = 20;
+    const listWidth = this.feedList.width;
+    const maxTitleLength = Math.max(15, listWidth - 11);
     const truncatedTitle = title.length > maxTitleLength ? title.substring(0, maxTitleLength - 3) + "..." : title;
     if (feed.unreadCount > 0) {
       return `${truncatedTitle} {cyan-fg}(${feed.unreadCount}){/cyan-fg}`;
@@ -1485,7 +1647,7 @@ class ArticleViewer {
     const article = this.articles[index];
     if (!article)
       return;
-    if (this.currentAISummary && this.currentAISummary.articleId === article.id) {
+    if (this.currentAISummary && article.id && this.currentAISummary.articleId === article.id) {
       this.displaySummary(article, this.currentAISummary.summary, this.currentAISummary.tags);
       return;
     }
@@ -1815,6 +1977,7 @@ ${content}`;
           const feedItems = this.feeds.map((f) => this.formatFeedListItem(f));
           this.feedList.setItems(feedItems);
           this.feedList.select(this.selectedFeedIndex);
+          this.displaySummary(article, summary, tags);
         }
       }
       this.screen.render();
@@ -1898,13 +2061,13 @@ ${content}`;
   }
   async fetchArticleContent(url) {
     try {
-      const response = await axios3.get(url, {
+      const response = await axios4.get(url, {
         timeout: 30000,
         headers: {
           "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
         }
       });
-      const $ = cheerio2.load(response.data);
+      const $ = cheerio3.load(response.data);
       $("script, style, nav, footer, header, iframe, noscript").remove();
       const contentSelectors = [
         "article",
@@ -2161,7 +2324,7 @@ var DEFAULT_CONFIG = {
   fetchInterval: 900,
   maxConcurrentFetches: 5,
   httpTimeout: 30000,
-  userAgent: "fressh/1.0",
+  userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
   excludeYouTubeShorts: false,
   maxArticleAgeDays: 30,
   allowInsecureCertificates: false
@@ -2581,7 +2744,7 @@ The daemon may not have been started yet, or file logging is not enabled.`);
 }
 async function getYouTubeChannelId(url) {
   try {
-    const response = await fetchFeed(url, { timeout: 1e4, userAgent: "fressh/1.0" });
+    const response = await fetchFeed(url, { timeout: 1e4, userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" });
     if (!response)
       return null;
     const match = response.data.match(/channel_id=([a-zA-Z0-9_-]{24})/);
@@ -2785,5 +2948,5 @@ program.command("read").description("List recent articles in the terminal").opti
 program.command("rebuild-search").description("Rebuild the full-text search index").action(handleRebuildSearchIndex);
 program.parse();
 
-//# debugId=C2BAC833746370CA64756E2164756E21
+//# debugId=18A786EADFBE973C64756E2164756E21
 //# sourceMappingURL=index.js.map

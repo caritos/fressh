@@ -46,6 +46,8 @@ export class ArticleViewer {
     this.screen = blessed.screen({
       smartCSR: true,
       title: 'fressh - RSS Article Viewer',
+      fullUnicode: true,
+      forceUnicode: true,
     });
 
     // Create feed list (left pane - 25% width)
@@ -548,8 +550,11 @@ export class ArticleViewer {
     const readIndicator = article.read ? ' ' : '*';
     const starIndicator = article.starred ? 'S' : ' ';
 
-    // Truncate title - adjust for smaller pane
-    const maxTitleLength = 30;
+    // Calculate max title length based on available width
+    // Account for: border (2), indicators (4: "* S "), scrollbar (1), padding (2)
+    const listWidth = this.articleList.width as number;
+    const maxTitleLength = Math.max(20, listWidth - 9);
+
     const truncatedTitle = title.length > maxTitleLength
       ? title.substring(0, maxTitleLength - 3) + '...'
       : title;
@@ -559,7 +564,12 @@ export class ArticleViewer {
 
   private formatFeedListItem(feed: FeedListItem): string {
     const title = feed.title.replace(/[^\x20-\x7E]/g, '');
-    const maxTitleLength = 20;
+
+    // Calculate max title length based on available width
+    // Account for: border (2), scrollbar (1), unread count space (~6: " (99)"), padding (2)
+    const listWidth = this.feedList.width as number;
+    const maxTitleLength = Math.max(15, listWidth - 11);
+
     const truncatedTitle = title.length > maxTitleLength
       ? title.substring(0, maxTitleLength - 3) + '...'
       : title;
@@ -619,7 +629,8 @@ export class ArticleViewer {
     if (!article) return;
 
     // If we have an AI summary for this specific article, display it instead
-    if (this.currentAISummary && this.currentAISummary.articleId === article.id) {
+    // Check both with strict equality and ensure article.id exists
+    if (this.currentAISummary && article.id && this.currentAISummary.articleId === article.id) {
       this.displaySummary(article, this.currentAISummary.summary, this.currentAISummary.tags);
       return;
     }
@@ -1097,6 +1108,9 @@ ${content}`;
           const feedItems = this.feeds.map(f => this.formatFeedListItem(f));
           this.feedList.setItems(feedItems);
           this.feedList.select(this.selectedFeedIndex);
+
+          // Re-display the summary after updates (the select() call above may have triggered showArticleDetail)
+          this.displaySummary(article, summary, tags);
         }
       }
 

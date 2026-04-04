@@ -357,7 +357,7 @@ export async function handleLogs(options: { follow?: boolean; lines?: number }):
 
 async function getYouTubeChannelId(url: string): Promise<string | null> {
   try {
-    const response = await fetchFeed(url, { timeout: 10000, userAgent: 'fressh/1.0' });
+    const response = await fetchFeed(url, { timeout: 10000, userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' });
     if (!response) return null;
 
     const match = response.data.match(/channel_id=([a-zA-Z0-9_-]{24})/);

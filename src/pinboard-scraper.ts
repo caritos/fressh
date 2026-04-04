@@ -17,7 +17,7 @@ export async function scrapePinboardPopular(timeout = 30000): Promise<PinboardLi
 
     const response = await axios.get('https://pinboard.in/popular/', {
       headers: {
-        'User-Agent': 'fressh/1.0',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       },
       timeout,
     });
@@ -27,7 +27,19 @@ export async function scrapePinboardPopular(timeout = 30000): Promise<PinboardLi
       return [];
     }
 
-    const $ = cheerio.load(response.data);
+    // Clean up malformed HTML entities before parsing
+    let html = response.data;
+    if (typeof html === 'string') {
+      // Remove or replace malformed HTML entities
+      // This handles cases like &#xHHHH; where HHHH contains invalid characters
+      html = html.replace(/&#x[0-9A-Fa-f]*[^0-9A-Fa-f;][^;]*;?/g, '');
+      html = html.replace(/&#[0-9]*[^0-9;][^;]*;?/g, '');
+    }
+
+    const $ = cheerio.load(html, {
+      xmlMode: false,
+      decodeEntities: false, // Don't decode entities, avoiding parse errors
+    });
     const links: PinboardLink[] = [];
 
     // Pinboard popular page structure: bookmarks are in divs with class 'bookmark'

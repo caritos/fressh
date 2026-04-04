@@ -20,7 +20,7 @@ export interface FetchOptions {
 export async function fetchFeed(url: string, options: FetchOptions = {}): Promise<FetchResult | null> {
   const {
     timeout = 30000,
-    userAgent = 'fressh/1.0',
+    userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     lastModified,
     etag,
     allowInsecureCertificates = false,
@@ -29,6 +29,8 @@ export async function fetchFeed(url: string, options: FetchOptions = {}): Promis
   try {
     const headers: Record<string, string> = {
       'User-Agent': userAgent,
+      'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+      'Accept-Language': 'en-US,en;q=0.9',
     };
 
     // Add conditional request headers

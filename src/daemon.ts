@@ -5,6 +5,7 @@ import { parseFeed } from './parser.js';
 import { logger } from './logger.js';
 import { Scheduler } from './scheduler.js';
 import { scrapePinboardPopular, convertPinboardLinksToArticles } from './pinboard-scraper.js';
+import { scrapeHackerNews, convertHackerNewsToArticles } from './hackernews-scraper.js';
 import { CLI_BANNER } from './logo.js';
 import type { Feed, Config } from './types.js';
 
@@ -56,6 +57,11 @@ export class Daemon {
     await this.scrapePinboard(); // Initial scrape
     this.scheduler.schedule('0 9 * * *', 'scrape-pinboard', () => this.scrapePinboard()); // Daily at 9am
 
+    // Ensure Hacker News feed exists and schedule scraping every 4 hours
+    this.ensureHackerNewsFeed();
+    await this.scrapeHackerNews(); // Initial scrape
+    this.scheduler.schedule('0 */4 * * *', 'scrape-hackernews', () => this.scrapeHackerNews()); // Every 4 hours
+
     logger.info('Daemon started successfully');
     logger.info('Press Ctrl+C to stop');
 
@@ -73,8 +79,11 @@ export class Daemon {
       return;
     }
 
-    // Filter out Pinboard Popular - it's handled by separate scraper
-    const rssFeeds = feeds.filter(feed => feed.url !== 'https://pinboard.in/popular/');
+    // Filter out Pinboard Popular and Hacker News - they're handled by separate scrapers
+    const rssFeeds = feeds.filter(feed =>
+      feed.url !== 'https://pinboard.in/popular/' &&
+      feed.url !== 'https://news.ycombinator.com/news'
+    );
 
     logger.info(`Fetching ${rssFeeds.length} feeds (max ${this.config.maxConcurrentFetches} concurrent)...`);
 
@@ -253,6 +262,64 @@ export class Daemon {
       logger.info(`--- Pinboard Scraping Complete (${newCount} new) ---`);
     } catch (error) {
       logger.error('Error scraping Pinboard:', error);
+    }
+  }
+
+  private ensureHackerNewsFeed(): void {
+    const hnUrl = 'https://news.ycombinator.com/news';
+    const existingFeed = database.getFeed(hnUrl);
+
+    if (!existingFeed) {
+      const feedId = database.addFeed({
+        url: hnUrl,
+        title: 'Hacker News',
+        site_url: 'https://news.ycombinator.com',
+        enabled: 1,
+      });
+      logger.info(`Added Hacker News feed (ID: ${feedId})`);
+    }
+  }
+
+  private async scrapeHackerNews(): Promise<void> {
+    const hnUrl = 'https://news.ycombinator.com/news';
+
+    try {
+      logger.info('--- Scraping Hacker News ---');
+
+      const items = await scrapeHackerNews(this.config.httpTimeout);
+
+      if (items.length === 0) {
+        logger.warn('No stories found on Hacker News');
+        return;
+      }
+
+      const feed = database.getFeed(hnUrl);
+      if (!feed || !feed.id) {
+        logger.error('Hacker News feed not found in database');
+        return;
+      }
+
+      const articles = convertHackerNewsToArticles(items, feed.id).map((article) => ({
+        ...article,
+        feed_id: feed.id!,
+      }));
+
+      const newCount = database.addArticles(articles);
+
+      database.updateFeedMetadata(feed.id, {
+        last_fetch: new Date(),
+        title: 'Hacker News',
+      });
+
+      if (newCount > 0) {
+        logger.info(`✓ Hacker News: ${newCount} new stories`);
+      } else {
+        logger.debug(`✓ Hacker News: no new stories`);
+      }
+
+      logger.info(`--- Hacker News Scraping Complete (${newCount} new) ---`);
+    } catch (error) {
+      logger.error('Error scraping Hacker News:', error);
     }
   }
 }
