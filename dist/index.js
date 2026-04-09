@@ -2814,10 +2814,12 @@ async function handleTest(url) {
   let testUrl = url;
   let isYouTubeChannelPage = false;
   let isRedditSubreddit = false;
+  let shouldCopyToClipboard = false;
   if (url.includes("reddit.com/r/") && !url.endsWith(".rss")) {
     const redditRss = convertRedditToRss(url);
     if (redditRss) {
       isRedditSubreddit = true;
+      shouldCopyToClipboard = true;
       console.log(`
 \uD83D\uDD34 Reddit subreddit detected: ${url}
 `);
@@ -2830,6 +2832,7 @@ async function handleTest(url) {
     }
   } else if (url.includes("youtube.com") && !url.includes("/feeds/videos.xml")) {
     isYouTubeChannelPage = true;
+    shouldCopyToClipboard = true;
     console.log(`
 \uD83C\uDFA5 YouTube channel detected: ${url}
 `);
@@ -2917,6 +2920,16 @@ async function handleTest(url) {
 \uD83D\uDCDD Use this URL in your OPML:`);
     console.log(`   ${testUrl}`);
   }
+  if (shouldCopyToClipboard) {
+    try {
+      const { spawn: spawn2 } = await import("child_process");
+      const pbcopy = spawn2("pbcopy");
+      pbcopy.stdin.write(testUrl);
+      pbcopy.stdin.end();
+      console.log(`
+\uD83D\uDCCB Feed URL copied to clipboard!`);
+    } catch (error) {}
+  }
 }
 
 // src/index.ts
@@ -2948,5 +2961,5 @@ program.command("read").description("List recent articles in the terminal").opti
 program.command("rebuild-search").description("Rebuild the full-text search index").action(handleRebuildSearchIndex);
 program.parse();
 
-//# debugId=18A786EADFBE973C64756E2164756E21
+//# debugId=D31EC1B52D1E20F264756E2164756E21
 //# sourceMappingURL=index.js.map

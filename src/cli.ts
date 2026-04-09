@@ -444,12 +444,14 @@ export async function handleTest(url: string): Promise<void> {
   let testUrl = url;
   let isYouTubeChannelPage = false;
   let isRedditSubreddit = false;
+  let shouldCopyToClipboard = false;
 
   // Check if this is a Reddit subreddit URL (not already an RSS feed)
   if (url.includes('reddit.com/r/') && !url.endsWith('.rss')) {
     const redditRss = convertRedditToRss(url);
     if (redditRss) {
       isRedditSubreddit = true;
+      shouldCopyToClipboard = true;
       console.log(`\n🔴 Reddit subreddit detected: ${url}\n`);
       console.log('Converting to RSS feed URL...');
       testUrl = redditRss;
@@ -459,6 +461,7 @@ export async function handleTest(url: string): Promise<void> {
   // Check if this is a YouTube channel page URL (not already a feed URL)
   else if (url.includes('youtube.com') && !url.includes('/feeds/videos.xml')) {
     isYouTubeChannelPage = true;
+    shouldCopyToClipboard = true;
     console.log(`\n🎥 YouTube channel detected: ${url}\n`);
     console.log('Converting to RSS feed URL...');
 
@@ -544,5 +547,18 @@ export async function handleTest(url: string): Promise<void> {
   if (isYouTubeChannelPage || isRedditSubreddit) {
     console.log('\n📝 Use this URL in your OPML:');
     console.log(`   ${testUrl}`);
+  }
+
+  // Copy the actual feed URL to clipboard if it was converted
+  if (shouldCopyToClipboard) {
+    try {
+      const { spawn } = await import('child_process');
+      const pbcopy = spawn('pbcopy');
+      pbcopy.stdin.write(testUrl);
+      pbcopy.stdin.end();
+      console.log('\n📋 Feed URL copied to clipboard!');
+    } catch (error) {
+      // Silent fail if clipboard copy doesn't work
+    }
   }
 }
