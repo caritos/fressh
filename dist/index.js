@@ -1188,6 +1188,7 @@ class ArticleViewer {
   searchQuery = "";
   currentPane = "articles";
   currentAISummary = null;
+  feedsVisible = true;
   constructor() {
     this.screen = blessed.screen({
       smartCSR: true,
@@ -1233,8 +1234,8 @@ class ArticleViewer {
       tags: true,
       top: 0,
       left: "25%",
-      width: "35%",
-      height: "100%-1",
+      width: "75%",
+      height: "30%",
       border: {
         type: "line"
       },
@@ -1262,10 +1263,10 @@ class ArticleViewer {
     this.articleDetail = blessed.box({
       parent: this.screen,
       label: " Article Details ",
-      top: 0,
-      left: "60%",
-      width: "40%",
-      height: "100%-1",
+      top: "30%",
+      left: "25%",
+      width: "75%",
+      height: "70%-1",
       border: {
         type: "line"
       },
@@ -1335,7 +1336,7 @@ class ArticleViewer {
       parent: this.screen,
       top: 0,
       left: "25%",
-      width: "35%",
+      width: "75%",
       height: 3,
       label: " Search (ESC to cancel) ",
       border: {
@@ -1419,6 +1420,11 @@ class ArticleViewer {
     });
     this.screen.key(["tab"], () => {
       this.switchPane();
+    });
+    this.screen.key(["f", "F"], () => {
+      if (!this.showingHelp) {
+        this.toggleFeedsPanel();
+      }
     });
     this.screen.key(["delete", "backspace"], () => {
       this.unsubscribeFromFeed();
@@ -1623,6 +1629,32 @@ class ArticleViewer {
       return `${truncatedTitle} {cyan-fg}(${feed.unreadCount}){/cyan-fg}`;
     }
     return truncatedTitle;
+  }
+  toggleFeedsPanel() {
+    this.feedsVisible = !this.feedsVisible;
+    if (this.feedsVisible) {
+      this.feedList.show();
+      this.articleList.left = "25%";
+      this.articleList.width = "75%";
+      this.articleDetail.left = "25%";
+      this.articleDetail.width = "75%";
+      this.searchBox.left = "25%";
+      this.searchBox.width = "75%";
+    } else {
+      this.feedList.hide();
+      this.articleList.left = 0;
+      this.articleList.width = "100%";
+      this.articleDetail.left = 0;
+      this.articleDetail.width = "100%";
+      this.searchBox.left = 0;
+      this.searchBox.width = "100%";
+      if (this.currentPane === "feeds") {
+        this.currentPane = "articles";
+        this.articleList.focus();
+      }
+    }
+    this.screen.realloc();
+    this.screen.render();
   }
   switchPane() {
     if (this.currentPane === "feeds") {
@@ -2238,8 +2270,8 @@ ${summary}`;
 
 {yellow-fg}Layout{/yellow-fg}
   Left Pane     Feed list (select a feed to view its articles)
-  Middle Pane   Article list for selected feed
-  Right Pane    Article details
+  Top-Right     Article list for selected feed
+  Bottom-Right  Article details
   Tab           Switch between Feeds and Articles pane
 
 {yellow-fg}Navigation{/yellow-fg}
@@ -2270,6 +2302,7 @@ ${summary}`;
 
 {yellow-fg}View Options{/yellow-fg}
   T             Toggle filter (Unread Only / All Articles)
+  F             Toggle feeds panel visibility
   R             Refresh feed and article lists
 
 {yellow-fg}General{/yellow-fg}
@@ -2959,7 +2992,11 @@ program.command("read").description("List recent articles in the terminal").opti
   unread: options.unread
 }));
 program.command("rebuild-search").description("Rebuild the full-text search index").action(handleRebuildSearchIndex);
-program.parse();
+if (process.argv.length === 2) {
+  handleView();
+} else {
+  program.parse();
+}
 
-//# debugId=D31EC1B52D1E20F264756E2164756E21
+//# debugId=61E44AAD6FAB7FFE64756E2164756E21
 //# sourceMappingURL=index.js.map

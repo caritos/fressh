@@ -130,4 +130,9 @@ program
   .description('Rebuild the full-text search index')
   .action(handleRebuildSearchIndex);
 
-program.parse();
+// Default to TUI view when no command is given
+if (process.argv.length === 2) {
+  handleView();
+} else {
+  program.parse();
+}
