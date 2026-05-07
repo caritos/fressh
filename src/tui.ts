@@ -236,6 +236,7 @@ export class ArticleViewer {
 
     // Feed navigation with j/k
     this.feedList.key(['j', 'down'], () => {
+      if (this.currentPane !== 'feeds') return;
       setImmediate(() => {
         const index = this.feedList.selected;
         this.selectedFeedIndex = index;
@@ -244,6 +245,7 @@ export class ArticleViewer {
     });
 
     this.feedList.key(['k', 'up'], () => {
+      if (this.currentPane !== 'feeds') return;
       setImmediate(() => {
         const index = this.feedList.selected;
         this.selectedFeedIndex = index;
@@ -262,6 +264,7 @@ export class ArticleViewer {
       const index = this.articleList.selected;
       this.selectedArticleIndex = index;
       this.showArticleDetail(index);
+      this.updateStatusBar();
     });
 
     // Page up/down navigation
@@ -999,13 +1002,14 @@ ${content}`;
       const unreadCount = this.articles.filter(a => !a.read).length;
       const filter = this.showUnreadOnly ? 'Unread' : 'All';
 
+      const position = totalCount > 0 ? `${this.selectedArticleIndex + 1}/${totalCount}` : '0/0';
       if (this.searchMode && this.searchQuery) {
         this.statusBar.setContent(
-          ` Search: "${this.searchQuery}" (${totalCount} results) | ESC to clear | ? help | Q quit `
+          ` Search: "${this.searchQuery}" (${totalCount} results) [${position}] | ESC to clear | ? help | Q quit `
         );
       } else {
         this.statusBar.setContent(
-          ` ${feedName} | Articles: ${totalCount} | Unread: ${unreadCount} | Filter: ${filter} | / search | Tab switch | ? help | Q quit `
+          ` ${feedName} | ${position} | Unread: ${unreadCount} | Filter: ${filter} | / search | Tab switch | ? help | Q quit `
         );
       }
     }

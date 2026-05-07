@@ -1364,6 +1364,8 @@ class ArticleViewer {
       this.loadArticlesForFeed();
     });
     this.feedList.key(["j", "down"], () => {
+      if (this.currentPane !== "feeds")
+        return;
       setImmediate(() => {
         const index = this.feedList.selected;
         this.selectedFeedIndex = index;
@@ -1371,6 +1373,8 @@ class ArticleViewer {
       });
     });
     this.feedList.key(["k", "up"], () => {
+      if (this.currentPane !== "feeds")
+        return;
       setImmediate(() => {
         const index = this.feedList.selected;
         this.selectedFeedIndex = index;
@@ -1385,6 +1389,7 @@ class ArticleViewer {
       const index = this.articleList.selected;
       this.selectedArticleIndex = index;
       this.showArticleDetail(index);
+      this.updateStatusBar();
     });
     this.screen.key(["pagedown", "C-f"], () => {
       if (!this.showingHelp) {
@@ -1903,10 +1908,11 @@ ${content}`;
       const totalCount = this.articles.length;
       const unreadCount = this.articles.filter((a) => !a.read).length;
       const filter = this.showUnreadOnly ? "Unread" : "All";
+      const position = totalCount > 0 ? `${this.selectedArticleIndex + 1}/${totalCount}` : "0/0";
       if (this.searchMode && this.searchQuery) {
-        this.statusBar.setContent(` Search: "${this.searchQuery}" (${totalCount} results) | ESC to clear | ? help | Q quit `);
+        this.statusBar.setContent(` Search: "${this.searchQuery}" (${totalCount} results) [${position}] | ESC to clear | ? help | Q quit `);
       } else {
-        this.statusBar.setContent(` ${feedName} | Articles: ${totalCount} | Unread: ${unreadCount} | Filter: ${filter} | / search | Tab switch | ? help | Q quit `);
+        this.statusBar.setContent(` ${feedName} | ${position} | Unread: ${unreadCount} | Filter: ${filter} | / search | Tab switch | ? help | Q quit `);
       }
     }
   }
@@ -2998,5 +3004,5 @@ if (process.argv.length === 2) {
   program.parse();
 }
 
-//# debugId=61E44AAD6FAB7FFE64756E2164756E21
+//# debugId=3FDFFCED3C05E30D64756E2164756E21
 //# sourceMappingURL=index.js.map
