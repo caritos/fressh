@@ -34,14 +34,25 @@ function getBody(article: ArticleRow): string {
 export default function ArticleReaderScreen() {
   const router = useRouter();
   const { feedId, articleId } = useLocalSearchParams<{ feedId: string; articleId: string }>();
+  if (Array.isArray(feedId) || Array.isArray(articleId)) return null;
   const [article, setArticle] = useState<ArticleRow | null>(null);
   const [articleList, setArticleList] = useState<ArticleRow[]>([]);
 
-  const load = useCallback(async () => {
+  // Loads only the single article — called on focus + after star toggle
+  const loadArticle = useCallback(async () => {
     try {
       const db = getDb();
       const a = await getArticle(db, Number(articleId));
       setArticle(a);
+    } catch (e) {
+      console.error('ArticleReader load error:', e);
+    }
+  }, [articleId]);
+
+  // Loads the sibling list — only needed once (feedId doesn't change)
+  const loadList = useCallback(async () => {
+    try {
+      const db = getDb();
       const feedIdParam =
         feedId === 'unread' || feedId === 'starred' || feedId === 'today'
           ? feedId
@@ -49,11 +60,11 @@ export default function ArticleReaderScreen() {
       const list = await getArticles(db, feedIdParam);
       setArticleList(list);
     } catch (e) {
-      console.error('ArticleReader load error:', e);
+      console.error('ArticleReader loadList error:', e);
     }
-  }, [articleId, feedId]);
+  }, [feedId]);
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useFocusEffect(useCallback(() => { loadArticle(); loadList(); }, [loadArticle, loadList]));
 
   if (!article) return null;
 
@@ -65,18 +76,28 @@ export default function ArticleReaderScreen() {
     try {
       const db = getDb();
       await toggleStar(db, article.id);
-      await load();
+      await loadArticle();
     } catch (e) {
       console.error('toggleStar error:', e);
     }
   };
 
   const onShare = async () => {
-    if (article.url) await Share.share({ url: article.url, message: article.title ?? '' });
+    if (!article.url) return;
+    try {
+      await Share.share({ url: article.url, message: article.title ?? '' });
+    } catch (e) {
+      console.error('share error:', e);
+    }
   };
 
   const onOpenBrowser = async () => {
-    if (article.url) await WebBrowser.openBrowserAsync(article.url);
+    if (!article.url) return;
+    try {
+      await WebBrowser.openBrowserAsync(article.url);
+    } catch (e) {
+      console.error('openBrowser error:', e);
+    }
   };
 
   return (
@@ -85,7 +106,7 @@ export default function ArticleReaderScreen() {
         options={{
           title: article.feed_title ?? '',
           headerRight: () => (
-            <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
+            <View style={styles.headerRight}>
               {prevArticle && (
                 <TouchableOpacity onPress={() => router.replace(`/feeds/${feedId}/${prevArticle.id}`)}>
                   <Text style={styles.navBtn}>‹ Prev</Text>
@@ -97,7 +118,7 @@ export default function ArticleReaderScreen() {
                 </TouchableOpacity>
               )}
               <TouchableOpacity onPress={onStar}>
-                <Text style={styles.navBtn}>{article.starred ? '★' : '☆'}</Text>
+                <Text style={styles.navBtn}>{article.starred === 1 ? '★' : '☆'}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={onShare}>
                 <Text style={styles.navBtn}>↑</Text>
@@ -115,9 +136,11 @@ export default function ArticleReaderScreen() {
           <Text style={styles.author}>by {article.author}</Text>
         ) : null}
         <Text style={styles.body}>{getBody(article)}</Text>
-        <TouchableOpacity style={styles.browserBtn} onPress={onOpenBrowser}>
-          <Text style={styles.browserBtnText}>Open in Browser</Text>
-        </TouchableOpacity>
+        {article.url ? (
+          <TouchableOpacity style={styles.browserBtn} onPress={onOpenBrowser}>
+            <Text style={styles.browserBtnText}>Open in Browser</Text>
+          </TouchableOpacity>
+        ) : null}
       </ScrollView>
     </>
   );
@@ -125,6 +148,7 @@ export default function ArticleReaderScreen() {
 
 const styles = StyleSheet.create({
   navBtn: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.accent },
+  headerRight: { flexDirection: 'row' as const, gap: 16, alignItems: 'center' as const },
   scroll: { flex: 1, backgroundColor: COLORS.background },
   content: { padding: 20, paddingBottom: 60 },
   meta: {
