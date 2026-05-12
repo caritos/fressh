@@ -193,6 +193,10 @@ mobile/
     tasks/
       background.ts
   assets/
+    fonts/
+      JetBrainsMono-Regular.ttf
+      JetBrainsMono-Medium.ttf
+      JetBrainsMono-Bold.ttf
   app.json
   package.json
   tsconfig.json
@@ -207,9 +211,21 @@ mobile/
 - `expo-task-manager`
 - `expo-web-browser` (SFSafariViewController)
 - `expo-notifications` (app badge count)
+- `expo-font` (JetBrains Mono)
+- `expo-splash-screen` (hold splash until fonts load)
 - `react-native` (iOS only target)
 
 No ORM. No state management library — React `useState` + `useEffect` with direct query calls is sufficient for this scope.
+
+## Typography
+
+JetBrains Mono is the app's typeface throughout — feed names, article titles, article body, timestamps, all UI text. Loaded via `expo-font` using the `.ttf` files bundled in `assets/fonts/`. Four weights are used:
+
+- **JetBrains Mono Regular (400)** — body text, timestamps, read article titles
+- **JetBrains Mono Medium (500)** — feed names, UI labels
+- **JetBrains Mono Bold (700)** — unread article titles, screen headings
+
+The app shows a splash screen until fonts are loaded (`expo-font` `useFonts` hook at the root layout).
 
 ## Testing
 
