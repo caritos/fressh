@@ -12,6 +12,7 @@ import {
   SectionList,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { Stack } from 'expo-router';
 import { Swipeable } from 'react-native-gesture-handler';
 import { getDb } from '../../src/db/database';
 import { getFeeds, upsertFeed, deleteFeed, getFeedByUrl, type FeedRow } from '../../src/db/queries';
@@ -34,11 +35,32 @@ export default function FeedsScreen() {
   const [addVisible, setAddVisible] = useState(false);
   const [addUrl, setAddUrl] = useState('');
   const [addLoading, setAddLoading] = useState(false);
+  const [smartCounts, setSmartCounts] = useState<{ starred: number; unread: number; today: number }>({
+    starred: 0,
+    unread: 0,
+    today: 0,
+  });
 
   const loadFeeds = useCallback(async () => {
     const db = getDb();
     const rows = await getFeeds(db);
     setFeeds(rows);
+
+    const starredRow = await db.getFirstAsync<{ count: number }>(
+      'SELECT COUNT(*) as count FROM articles WHERE starred = 1'
+    );
+    const unreadRow = await db.getFirstAsync<{ count: number }>(
+      'SELECT COUNT(*) as count FROM articles WHERE read = 0'
+    );
+    const todayRow = await db.getFirstAsync<{ count: number }>(
+      "SELECT COUNT(*) as count FROM articles WHERE date(published_at) = date('now')"
+    );
+
+    setSmartCounts({
+      starred: starredRow?.count ?? 0,
+      unread: unreadRow?.count ?? 0,
+      today: todayRow?.count ?? 0,
+    });
   }, []);
 
   useFocusEffect(
@@ -113,10 +135,22 @@ export default function FeedsScreen() {
         return;
       }
 
-      await upsertFeed(db, { url: feedUrl, title: parsed.title, site_url: parsed.siteUrl });
-      setAddUrl('');
-      setAddVisible(false);
-      await loadFeeds();
+      Alert.alert(
+        'Add Feed',
+        `Add "${parsed.title ?? feedUrl}"?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Add',
+            onPress: async () => {
+              await upsertFeed(db, { url: feedUrl, title: parsed.title, site_url: parsed.siteUrl });
+              setAddUrl('');
+              setAddVisible(false);
+              await loadFeeds();
+            },
+          },
+        ]
+      );
     } catch (e) {
       Alert.alert('Error', 'Something went wrong. Please try again.');
     } finally {
@@ -150,6 +184,13 @@ export default function FeedsScreen() {
     </Swipeable>
   );
 
+  const getSmartCount = (id: string): number => {
+    if (id === 'starred') return smartCounts.starred;
+    if (id === 'unread') return smartCounts.unread;
+    if (id === 'today') return smartCounts.today;
+    return 0;
+  };
+
   const sections = [
     { title: 'Smart Feeds', data: SMART_FEEDS.map(s => ({ ...s, isSmart: true as const })) },
     { title: 'Feeds', data: feeds.map(f => ({ ...f, isSmart: false as const })) },
@@ -157,6 +198,21 @@ export default function FeedsScreen() {
 
   return (
     <View style={styles.container}>
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <View style={styles.headerRight}>
+              <TouchableOpacity style={styles.headerBtn} onPress={() => {}}>
+                <Text style={styles.headerBtnText}>⚙</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.headerBtn} onPress={() => setAddVisible(true)}>
+                <Text style={styles.headerBtnText}>+</Text>
+              </TouchableOpacity>
+            </View>
+          ),
+        }}
+      />
+
       <SectionList
         sections={sections}
         keyExtractor={(item) => String((item as any).id)}
@@ -166,6 +222,7 @@ export default function FeedsScreen() {
         renderItem={({ item }) => {
           if ((item as any).isSmart) {
             const smart = item as typeof SMART_FEEDS[0] & { isSmart: true };
+            const count = getSmartCount(smart.id);
             return (
               <TouchableOpacity
                 style={styles.row}
@@ -173,6 +230,11 @@ export default function FeedsScreen() {
                 activeOpacity={0.7}
               >
                 <Text style={styles.rowTitle}>{smart.label}</Text>
+                {count > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{count}</Text>
+                  </View>
+                )}
               </TouchableOpacity>
             );
           }
@@ -183,11 +245,6 @@ export default function FeedsScreen() {
         }
         contentContainerStyle={{ paddingBottom: 40 }}
       />
-
-      {/* Add Feed button */}
-      <TouchableOpacity style={styles.addButton} onPress={() => setAddVisible(true)}>
-        <Text style={styles.addButtonText}>+ Add Feed</Text>
-      </TouchableOpacity>
 
       {/* Add Feed modal */}
       <Modal visible={addVisible} animationType="slide" transparent presentationStyle="pageSheet">
@@ -229,6 +286,9 @@ export default function FeedsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  headerBtn: { paddingHorizontal: 8, paddingVertical: 4 },
+  headerBtnText: { fontSize: 20, color: COLORS.accent },
   sectionHeader: {
     fontFamily: FONTS.medium,
     fontSize: 11,
@@ -266,14 +326,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   deleteActionText: { fontFamily: FONTS.medium, color: '#fff', fontSize: 14 },
-  addButton: {
-    margin: 16,
-    backgroundColor: COLORS.accent,
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  addButtonText: { fontFamily: FONTS.bold, fontSize: 15, color: '#fff' },
   modal: {
     flex: 1,
     backgroundColor: COLORS.surface,
