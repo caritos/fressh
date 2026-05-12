@@ -15,6 +15,7 @@ import { getDb } from '../../../src/db/database';
 import {
   getArticles,
   markRead,
+  markUnread,
   markAllRead,
   toggleStar,
   getFeeds,
@@ -32,6 +33,7 @@ const SMART_LABELS: Record<string, string> = {
 function formatRelative(iso: string | null): string {
   if (!iso) return '';
   const diff = Date.now() - new Date(iso).getTime();
+  if (diff < 0) return 'just now';
   const mins = Math.floor(diff / 60000);
   if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
@@ -42,6 +44,7 @@ function formatRelative(iso: string | null): string {
 export default function ArticleListScreen() {
   const router = useRouter();
   const { feedId: rawId } = useLocalSearchParams<{ feedId: string }>();
+  if (Array.isArray(rawId)) return null;
   const feedId =
     rawId === 'unread' || rawId === 'starred' || rawId === 'today'
       ? rawId
@@ -52,15 +55,19 @@ export default function ArticleListScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
-    const db = getDb();
-    const rows = await getArticles(db, feedId);
-    setArticles(rows);
-    if (typeof feedId === 'string') {
-      setFeedTitle(SMART_LABELS[feedId] ?? feedId);
-    } else {
-      const feeds = await getFeeds(db);
-      const feed = feeds.find((f) => f.id === feedId);
-      setFeedTitle(feed?.title ?? 'Feed');
+    try {
+      const db = getDb();
+      const rows = await getArticles(db, feedId);
+      setArticles(rows);
+      if (typeof feedId === 'string') {
+        setFeedTitle(SMART_LABELS[feedId] ?? feedId);
+      } else {
+        const feeds = await getFeeds(db);
+        const feed = feeds.find((f) => f.id === feedId);
+        setFeedTitle(feed?.title ?? 'Feed');
+      }
+    } catch (e) {
+      console.error('ArticleList load error:', e);
     }
   }, [feedId]);
 
@@ -80,14 +87,22 @@ export default function ArticleListScreen() {
 
   const onMarkAllRead = async () => {
     if (typeof feedId === 'string') return;
-    const db = getDb();
-    await markAllRead(db, feedId);
-    await load();
+    try {
+      const db = getDb();
+      await markAllRead(db, feedId);
+      await load();
+    } catch (e) {
+      Alert.alert('Error', 'Failed to mark all as read.');
+    }
   };
 
   const onTap = async (article: ArticleRow) => {
-    const db = getDb();
-    await markRead(db, article.id);
+    try {
+      const db = getDb();
+      await markRead(db, article.id);
+    } catch (e) {
+      console.error('markRead error:', e);
+    }
     router.push(`/feeds/${rawId}/${article.id}`);
   };
 
@@ -120,7 +135,7 @@ export default function ArticleListScreen() {
       onPress={async () => {
         const db = getDb();
         if (article.read) {
-          await db.runAsync('UPDATE articles SET read = 0 WHERE id = ?', [article.id]);
+          await markUnread(db, article.id);
         } else {
           await markRead(db, article.id);
         }
@@ -131,7 +146,7 @@ export default function ArticleListScreen() {
     </TouchableOpacity>
   );
 
-  const renderItem = ({ item }: { item: ArticleRow }) => (
+  const renderItem = useCallback(({ item }: { item: ArticleRow }) => (
     <Swipeable
       renderRightActions={() => renderRightActions(item)}
       renderLeftActions={() => renderLeftActions(item)}
@@ -152,7 +167,7 @@ export default function ArticleListScreen() {
         </View>
       </TouchableOpacity>
     </Swipeable>
-  );
+  ), [articles, feedId, rawId]);
 
   return (
     <>
@@ -179,7 +194,7 @@ export default function ArticleListScreen() {
         }
         contentContainerStyle={{ paddingBottom: 40 }}
         ListEmptyComponent={
-          <Text style={styles.empty}>No articles yet. Pull to refresh.</Text>
+          <Text style={styles.empty}>No articles here.</Text>
         }
       />
     </>

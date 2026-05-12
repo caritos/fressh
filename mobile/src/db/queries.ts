@@ -154,6 +154,10 @@ export async function markRead(db: SQLiteDatabase, id: number): Promise<void> {
   await db.runAsync(`UPDATE articles SET read = 1 WHERE id = ?`, [id]);
 }
 
+export async function markUnread(db: SQLiteDatabase, id: number): Promise<void> {
+  await db.runAsync(`UPDATE articles SET read = 0 WHERE id = ?`, [id]);
+}
+
 export async function markAllRead(db: SQLiteDatabase, feedId: number): Promise<void> {
   await db.runAsync(`UPDATE articles SET read = 1 WHERE feed_id = ?`, [feedId]);
 }
