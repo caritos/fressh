@@ -19,6 +19,7 @@ import { detectFeedType } from '../../src/fetcher/detect';
 import { resolveYouTubeChannelId, fetchFeed } from '../../src/fetcher/fetch';
 import { parseFeed } from '../../src/fetcher/parser';
 import { refresh } from '../../src/fetcher/refresh';
+import { importBundledSubscriptions, BUNDLED_FEED_COUNT } from '../../src/fetcher/opml';
 import { FONTS, COLORS } from '../../src/constants';
 
 const SMART_FEEDS = [
@@ -34,6 +35,7 @@ export default function FeedsScreen() {
   const [addVisible, setAddVisible] = useState(false);
   const [addUrl, setAddUrl] = useState('');
   const [addLoading, setAddLoading] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [smartCounts, setSmartCounts] = useState<{ starred: number; unread: number; today: number }>({
     starred: 0,
     unread: 0,
@@ -183,6 +185,32 @@ export default function FeedsScreen() {
     }
   };
 
+  const onImportSubscriptions = () => {
+    Alert.alert(
+      'Import Subscriptions',
+      `Import ${BUNDLED_FEED_COUNT} feeds from your TUI subscription list? Feeds already added will be skipped.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Import',
+          onPress: async () => {
+            setImporting(true);
+            setAddVisible(false);
+            try {
+              const inserted = await importBundledSubscriptions();
+              await loadFeeds();
+              Alert.alert('Done', `Imported ${inserted} new feeds.`);
+            } catch {
+              Alert.alert('Error', 'Import failed. Please try again.');
+            } finally {
+              setImporting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderDeleteAction = (feed: FeedRow) => (
     <TouchableOpacity
       style={styles.deleteAction}
@@ -298,8 +326,20 @@ export default function FeedsScreen() {
                 : <Text style={styles.confirmBtnText}>Add</Text>}
             </TouchableOpacity>
           </View>
+          <TouchableOpacity style={styles.importLink} onPress={onImportSubscriptions}>
+            <Text style={styles.importLinkText}>
+              Import all {BUNDLED_FEED_COUNT} subscriptions from TUI
+            </Text>
+          </TouchableOpacity>
         </View>
       </Modal>
+
+      {importing && (
+        <View style={styles.importingOverlay}>
+          <ActivityIndicator color={COLORS.accent} size="large" />
+          <Text style={styles.importingText}>Importing subscriptions…</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -368,4 +408,14 @@ const styles = StyleSheet.create({
   cancelBtnText: { fontFamily: FONTS.medium, fontSize: 15, color: COLORS.text },
   confirmBtn: { backgroundColor: COLORS.accent },
   confirmBtnText: { fontFamily: FONTS.bold, fontSize: 15, color: '#fff' },
+  importLink: { marginTop: 24, alignItems: 'center' },
+  importLinkText: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textSecondary },
+  importingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  importingText: { fontFamily: FONTS.medium, fontSize: 15, color: COLORS.text },
 });
