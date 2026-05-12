@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "fressh",
+    "slug": "fressh-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "fressh",
+    "userInterfaceStyle": "dark",
+    "platforms": ["ios"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.caritos.fressh",
+      "infoPlist": {
+        "UIBackgroundModes": ["fetch", "remote-notification"]
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "sounds": []
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
