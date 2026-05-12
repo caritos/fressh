@@ -154,13 +154,13 @@ All three screens live in a single native stack so iOS swipe-back works througho
 **Content:**
 - Feed name + published timestamp (small, above title)
 - Article title (large, bold)
-- Article body: `content_text` if available, else `summary`. Plain text rendering via `ScrollView` + `Text` (no WebView for content — keeps it fast and offline-friendly)
+- Article body: `content_text` if available, else strip HTML from `content_html`, else `summary`. Plain text rendering via `ScrollView` + `Text` (no WebView for content — keeps it fast and offline-friendly)
 - "Open in Browser" prominent button at bottom → opens `WebBrowser.openBrowserAsync()` (SFSafariViewController)
 
 **Interactions:**
 - Star button → `toggleStar(id)`
 - Share → native share sheet with article URL
-- Swipe left/right → navigate to next/previous article in the list
+- Previous/Next buttons in nav bar → navigate to adjacent article in the list (swipe gestures are reserved for iOS back navigation)
 
 ## Error Handling
 
@@ -206,6 +206,7 @@ mobile/
 - `expo-background-fetch`
 - `expo-task-manager`
 - `expo-web-browser` (SFSafariViewController)
+- `expo-notifications` (app badge count)
 - `react-native` (iOS only target)
 
 No ORM. No state management library — React `useState` + `useEffect` with direct query calls is sufficient for this scope.
