@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.border,
     backgroundColor: COLORS.background,
   },
-  rowRead: { opacity: 0.45 },
+  rowRead: { opacity: 0.4 },
   title: { fontFamily: FONTS.bold, fontSize: 15, color: COLORS.text, lineHeight: 21, marginBottom: 3 },
   titleRead: { fontFamily: FONTS.regular },
   meta: { fontFamily: FONTS.regular, fontSize: 11, color: COLORS.textSecondary },
