@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,8 +11,7 @@ import {
   ActivityIndicator,
   SectionList,
 } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
-import { Stack } from 'expo-router';
+import { useFocusEffect, useRouter, Stack } from 'expo-router';
 import { Swipeable } from 'react-native-gesture-handler';
 import { getDb } from '../../src/db/database';
 import { getFeeds, upsertFeed, deleteFeed, getFeedByUrl, type FeedRow } from '../../src/db/queries';
@@ -88,9 +87,17 @@ export default function FeedsScreen() {
         text: 'Remove',
         style: 'destructive',
         onPress: async () => {
-          const db = getDb();
-          await deleteFeed(db, feed.id);
-          await loadFeeds();
+          try {
+            const db = getDb();
+            await deleteFeed(db, feed.id);
+            try {
+              await loadFeeds();
+            } catch {
+              Alert.alert('Error', 'Feed removed but failed to refresh the list.');
+            }
+          } catch {
+            Alert.alert('Error', 'Failed to remove feed.');
+          }
         },
       },
     ]);
@@ -99,6 +106,7 @@ export default function FeedsScreen() {
   const onAddFeed = async () => {
     if (!addUrl.trim()) return;
     setAddLoading(true);
+    let showingAlert = false;
     try {
       const detected = detectFeedType(addUrl.trim());
       let feedUrl = '';
@@ -135,18 +143,33 @@ export default function FeedsScreen() {
         return;
       }
 
+      showingAlert = true;
       Alert.alert(
         'Add Feed',
         `Add "${parsed.title ?? feedUrl}"?`,
         [
-          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Cancel',
+            style: 'cancel',
+            onPress: () => setAddLoading(false),
+          },
           {
             text: 'Add',
             onPress: async () => {
-              await upsertFeed(db, { url: feedUrl, title: parsed.title, site_url: parsed.siteUrl });
-              setAddUrl('');
-              setAddVisible(false);
-              await loadFeeds();
+              try {
+                await upsertFeed(db, { url: feedUrl, title: parsed.title, site_url: parsed.siteUrl });
+                setAddUrl('');
+                setAddVisible(false);
+                try {
+                  await loadFeeds();
+                } catch {
+                  Alert.alert('Error', 'Feed saved but failed to refresh the list.');
+                }
+              } catch {
+                Alert.alert('Error', 'Failed to save feed.');
+              } finally {
+                setAddLoading(false);
+              }
             },
           },
         ]
@@ -154,7 +177,9 @@ export default function FeedsScreen() {
     } catch (e) {
       Alert.alert('Error', 'Something went wrong. Please try again.');
     } finally {
-      setAddLoading(false);
+      if (!showingAlert) {
+        setAddLoading(false);
+      }
     }
   };
 
@@ -191,24 +216,19 @@ export default function FeedsScreen() {
     return 0;
   };
 
-  const sections = [
+  const sections = useMemo(() => [
     { title: 'Smart Feeds', data: SMART_FEEDS.map(s => ({ ...s, isSmart: true as const })) },
     { title: 'Feeds', data: feeds.map(f => ({ ...f, isSmart: false as const })) },
-  ];
+  ], [feeds]);
 
   return (
     <View style={styles.container}>
       <Stack.Screen
         options={{
           headerRight: () => (
-            <View style={styles.headerRight}>
-              <TouchableOpacity style={styles.headerBtn} onPress={() => {}}>
-                <Text style={styles.headerBtnText}>⚙</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.headerBtn} onPress={() => setAddVisible(true)}>
-                <Text style={styles.headerBtnText}>+</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity style={styles.headerBtn} onPress={() => setAddVisible(true)}>
+              <Text style={styles.headerBtnText}>+</Text>
+            </TouchableOpacity>
           ),
         }}
       />
@@ -286,7 +306,6 @@ export default function FeedsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   headerBtn: { paddingHorizontal: 8, paddingVertical: 4 },
   headerBtnText: { fontSize: 20, color: COLORS.accent },
   sectionHeader: {
