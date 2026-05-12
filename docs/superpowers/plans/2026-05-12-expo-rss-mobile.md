@@ -90,7 +90,7 @@ Create `mobile/package.json`:
     "expo-linking": "~7.0.0",
     "expo-constants": "~17.0.0",
     "expo-status-bar": "~2.0.0",
-    "react": "18.3.2",
+    "react": "18.3.1",
     "react-native": "0.76.9",
     "react-native-screens": "~4.4.0",
     "react-native-safe-area-context": "4.12.0",
