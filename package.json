@@ -8,13 +8,13 @@
     "fressh": "./dist/index.js"
   },
   "scripts": {
-    "build": "bun build console/index.ts --outdir dist --target node --format esm --sourcemap --external better-sqlite3 --external rss-parser --external axios --external node-cron --external fast-xml-parser --external commander --external p-limit --external cheerio --external blessed || tsc",
-    "dev": "bun console/index.ts",
+    "build": "bun build ./console/index.ts --outdir dist --target node --format esm --sourcemap --external better-sqlite3 --external rss-parser --external axios --external node-cron --external fast-xml-parser --external commander --external p-limit --external cheerio --external blessed || tsc",
+    "dev": "bun ./console/index.ts",
     "start": "bun dist/index.js",
     "view": "bun dist/index.js view",
     "test": "bun test/database.test.ts",
     "cli": "bun dist/index.js",
-    "bun-direct": "bun console/index.ts"
+    "bun-direct": "bun ./console/index.ts"
   },
   "keywords": ["rss", "daemon", "macos"],
   "author": "",
