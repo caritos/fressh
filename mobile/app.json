@@ -18,7 +18,6 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.caritos.fressh",
-      "buildNumber": "1",
       "infoPlist": {
         "UIBackgroundModes": [
           "fetch",
