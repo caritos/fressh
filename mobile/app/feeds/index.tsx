@@ -21,11 +21,13 @@ import { parseFeed } from '../../src/fetcher/parser';
 import { refresh } from '../../src/fetcher/refresh';
 import { importBundledSubscriptions, BUNDLED_FEED_COUNT } from '../../src/fetcher/opml';
 import { FONTS, COLORS } from '../../src/constants';
+import Row from '../../src/components/ui/Row';
+import SectionHeader from '../../src/components/ui/SectionHeader';
 
 const SMART_FEEDS = [
-  { id: 'starred', label: '⭐ Starred' },
-  { id: 'unread', label: '📬 All Unread' },
-  { id: 'today', label: '🗓 Today' },
+  { id: 'starred', label: 'Starred' },
+  { id: 'unread', label: 'All Unread' },
+  { id: 'today', label: 'Today' },
 ];
 
 export default function FeedsScreen() {
@@ -73,9 +75,12 @@ export default function FeedsScreen() {
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      await refresh();
+      const summary = await refresh();
       await loadFeeds();
-    } catch (e) {
+      if (summary.newArticles > 0) {
+        Alert.alert('Refreshed', `${summary.newArticles} new article${summary.newArticles === 1 ? '' : 's'}.`);
+      }
+    } catch {
       Alert.alert('Refresh failed', 'Check your connection and try again.');
     } finally {
       setRefreshing(false);
@@ -176,7 +181,7 @@ export default function FeedsScreen() {
           },
         ]
       );
-    } catch (e) {
+    } catch {
       Alert.alert('Error', 'Something went wrong. Please try again.');
     } finally {
       if (!showingAlert) {
@@ -211,32 +216,6 @@ export default function FeedsScreen() {
     );
   };
 
-  const renderDeleteAction = (feed: FeedRow) => (
-    <TouchableOpacity
-      style={styles.deleteAction}
-      onPress={() => onDeleteFeed(feed)}
-    >
-      <Text style={styles.deleteActionText}>Remove</Text>
-    </TouchableOpacity>
-  );
-
-  const renderFeedRow = (feed: FeedRow) => (
-    <Swipeable renderRightActions={() => renderDeleteAction(feed)}>
-      <TouchableOpacity
-        style={styles.row}
-        onPress={() => router.push(`/feeds/${feed.id}`)}
-        activeOpacity={0.7}
-      >
-        <Text style={styles.rowTitle} numberOfLines={1}>{feed.title ?? feed.url}</Text>
-        {feed.unread_count > 0 && (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{feed.unread_count}</Text>
-          </View>
-        )}
-      </TouchableOpacity>
-    </Swipeable>
-  );
-
   const getSmartCount = (id: string): number => {
     if (id === 'starred') return smartCounts.starred;
     if (id === 'unread') return smartCounts.unread;
@@ -253,6 +232,7 @@ export default function FeedsScreen() {
     <View style={styles.container}>
       <Stack.Screen
         options={{
+          title: 'FRESSH',
           headerRight: () => (
             <TouchableOpacity style={styles.headerBtn} onPress={() => setAddVisible(true)}>
               <Text style={styles.headerBtnText}>+</Text>
@@ -265,28 +245,39 @@ export default function FeedsScreen() {
         sections={sections}
         keyExtractor={(item) => String((item as any).id)}
         renderSectionHeader={({ section }) => (
-          <Text style={styles.sectionHeader}>{section.title}</Text>
+          <SectionHeader title={section.title} />
         )}
         renderItem={({ item }) => {
           if ((item as any).isSmart) {
             const smart = item as typeof SMART_FEEDS[0] & { isSmart: true };
             const count = getSmartCount(smart.id);
             return (
-              <TouchableOpacity
-                style={styles.row}
+              <Row
+                label={smart.label}
+                badge={count}
                 onPress={() => router.push(`/feeds/${smart.id}`)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.rowTitle}>{smart.label}</Text>
-                {count > 0 && (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{count}</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
+              />
             );
           }
-          return renderFeedRow(item as FeedRow);
+          const feed = item as FeedRow & { isSmart: false };
+          return (
+            <Swipeable
+              renderRightActions={() => (
+                <TouchableOpacity
+                  style={styles.deleteAction}
+                  onPress={() => onDeleteFeed(feed)}
+                >
+                  <Text style={styles.deleteActionText}>Remove</Text>
+                </TouchableOpacity>
+              )}
+            >
+              <Row
+                label={feed.title ?? feed.url}
+                badge={feed.unread_count}
+                onPress={() => router.push(`/feeds/${feed.id}`)}
+              />
+            </Swipeable>
+          );
         }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.accent} />
@@ -294,8 +285,7 @@ export default function FeedsScreen() {
         contentContainerStyle={{ paddingBottom: 40 }}
       />
 
-      {/* Add Feed modal */}
-      <Modal visible={addVisible} animationType="slide" transparent presentationStyle="pageSheet">
+      <Modal visible={addVisible} animationType="slide" presentationStyle="pageSheet">
         <View style={styles.modal}>
           <Text style={styles.modalTitle}>Add Feed</Text>
           <TextInput
@@ -347,75 +337,53 @@ export default function FeedsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   headerBtn: { paddingHorizontal: 8, paddingVertical: 4 },
-  headerBtnText: { fontSize: 20, color: COLORS.accent },
-  sectionHeader: {
-    fontFamily: FONTS.medium,
-    fontSize: 11,
-    color: COLORS.textSecondary,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    backgroundColor: COLORS.surface,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
+  headerBtnText: {
+    fontSize: 26,
+    fontFamily: FONTS.sans,
+    fontWeight: '300',
+    color: COLORS.accent,
+    lineHeight: 30,
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.border,
-    backgroundColor: COLORS.background,
-  },
-  rowTitle: { fontFamily: FONTS.regular, fontSize: 15, color: COLORS.text, flex: 1, marginRight: 8 },
-  badge: {
-    backgroundColor: COLORS.accent,
-    borderRadius: 10,
-    minWidth: 20,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    alignItems: 'center',
-  },
-  badgeText: { fontFamily: FONTS.bold, fontSize: 11, color: '#fff' },
   deleteAction: {
-    backgroundColor: '#dc2626',
+    backgroundColor: '#C0392B',
     justifyContent: 'center',
     alignItems: 'flex-end',
     paddingHorizontal: 20,
   },
-  deleteActionText: { fontFamily: FONTS.medium, color: '#fff', fontSize: 14 },
+  deleteActionText: { fontFamily: FONTS.sansBold, color: '#fff', fontSize: 13 },
   modal: {
     flex: 1,
     backgroundColor: COLORS.surface,
     padding: 24,
     paddingTop: 48,
   },
-  modalTitle: { fontFamily: FONTS.bold, fontSize: 20, color: COLORS.text, marginBottom: 20 },
+  modalTitle: { fontFamily: FONTS.sansBold, fontSize: 18, color: COLORS.text, marginBottom: 20 },
   input: {
-    fontFamily: FONTS.regular,
+    fontFamily: FONTS.sans,
     fontSize: 14,
     color: COLORS.text,
     backgroundColor: COLORS.background,
-    borderRadius: 8,
+    borderRadius: 3,
     paddingHorizontal: 14,
     paddingVertical: 12,
     marginBottom: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.border,
   },
   modalButtons: { flexDirection: 'row', gap: 12 },
-  modalBtn: { flex: 1, borderRadius: 8, paddingVertical: 13, alignItems: 'center' },
+  modalBtn: { flex: 1, borderRadius: 3, paddingVertical: 13, alignItems: 'center' },
   cancelBtn: { backgroundColor: COLORS.border },
-  cancelBtnText: { fontFamily: FONTS.medium, fontSize: 15, color: COLORS.text },
+  cancelBtnText: { fontFamily: FONTS.sansMedium, fontSize: 14, color: COLORS.text },
   confirmBtn: { backgroundColor: COLORS.accent },
-  confirmBtnText: { fontFamily: FONTS.bold, fontSize: 15, color: '#fff' },
+  confirmBtnText: { fontFamily: FONTS.sansBold, fontSize: 14, color: '#fff' },
   importLink: { marginTop: 24, alignItems: 'center' },
-  importLinkText: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textSecondary },
+  importLinkText: { fontFamily: FONTS.sans, fontSize: 13, color: COLORS.textSecondary },
   importingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.75)',
+    backgroundColor: 'rgba(245,245,240,0.85)',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 16,
   },
-  importingText: { fontFamily: FONTS.medium, fontSize: 15, color: COLORS.text },
+  importingText: { fontFamily: FONTS.sansMedium, fontSize: 15, color: COLORS.text },
 });
