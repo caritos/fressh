@@ -1,4 +1,4 @@
-import { database } from '../src/database.js';
+import { database } from '../console/database.js';
 import { unlinkSync, existsSync } from 'fs';
 
 const TEST_DB = '/tmp/test-fressh.db';
