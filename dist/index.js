@@ -29,7 +29,7 @@ var __export = (target, all) => {
 var __esm = (fn, res) => () => (fn && (res = fn(fn = 0)), res);
 var __require = /* @__PURE__ */ createRequire(import.meta.url);
 
-// src/logger.ts
+// console/logger.ts
 import { appendFileSync, mkdirSync, existsSync as existsSync2 } from "fs";
 import { join as join2 } from "path";
 import { homedir as homedir2 } from "os";
@@ -105,7 +105,7 @@ var init_logger = __esm(() => {
   logger = new Logger;
 });
 
-// src/database-adapter.ts
+// console/database-adapter.ts
 function createDatabase(path) {
   const isBun = typeof Bun !== "undefined";
   if (isBun) {
@@ -175,7 +175,7 @@ function createDatabase(path) {
   }
 }
 
-// src/database.ts
+// console/database.ts
 import { mkdirSync as mkdirSync2, existsSync as existsSync3 } from "fs";
 import { dirname as dirname2 } from "path";
 
@@ -497,7 +497,7 @@ var init_database = __esm(() => {
   database = new DatabaseManager;
 });
 
-// src/fetcher.ts
+// console/fetcher.ts
 import axios from "axios";
 import https from "https";
 async function fetchFeed(url, options = {}) {
@@ -564,7 +564,7 @@ var init_fetcher = __esm(() => {
   init_logger();
 });
 
-// src/parser.ts
+// console/parser.ts
 import Parser from "rss-parser";
 function isYouTubeShort(url) {
   if (!url)
@@ -676,7 +676,7 @@ var init_parser = __esm(() => {
   });
 });
 
-// src/scheduler.ts
+// console/scheduler.ts
 import cron from "node-cron";
 
 class Scheduler {
@@ -717,7 +717,7 @@ var init_scheduler = __esm(() => {
   init_logger();
 });
 
-// src/pinboard-scraper.ts
+// console/pinboard-scraper.ts
 import * as cheerio from "cheerio";
 import axios2 from "axios";
 async function scrapePinboardPopular(timeout = 30000) {
@@ -800,7 +800,7 @@ var init_pinboard_scraper = __esm(() => {
   init_logger();
 });
 
-// src/hackernews-scraper.ts
+// console/hackernews-scraper.ts
 import * as cheerio2 from "cheerio";
 import axios3 from "axios";
 async function scrapeHackerNews(timeout = 30000) {
@@ -898,14 +898,14 @@ var init_hackernews_scraper = __esm(() => {
   init_logger();
 });
 
-// src/logo.ts
+// console/logo.ts
 var CLI_BANNER = `
      ↗
    ↗  \uD83C\uDF31   fressh — Fresh RSS Reader
   —  ╱│╲   Terminal-based RSS daemon
 `;
 
-// src/daemon.ts
+// console/daemon.ts
 var exports_daemon = {};
 __export(exports_daemon, {
   Daemon: () => Daemon
@@ -1155,7 +1155,7 @@ var init_daemon = __esm(() => {
   init_hackernews_scraper();
 });
 
-// src/tui.ts
+// console/tui.ts
 var exports_tui = {};
 __export(exports_tui, {
   ArticleViewer: () => ArticleViewer
@@ -2350,10 +2350,10 @@ var init_tui = __esm(() => {
   execAsync = promisify(exec);
 });
 
-// src/index.ts
+// console/index.ts
 import { Command } from "commander";
 
-// src/config.ts
+// console/config.ts
 import { readFileSync, existsSync } from "fs";
 import { homedir } from "os";
 import { join } from "path";
@@ -2398,11 +2398,11 @@ function loadConfig() {
   return config;
 }
 
-// src/cli.ts
+// console/cli.ts
 init_logger();
 init_database();
 
-// src/opml.ts
+// console/opml.ts
 init_database();
 init_logger();
 import { readFileSync as readFileSync2, writeFileSync } from "fs";
@@ -2497,7 +2497,7 @@ function exportOpml(outputPath) {
   return feeds.length;
 }
 
-// src/cli.ts
+// console/cli.ts
 init_fetcher();
 init_parser();
 import { existsSync as existsSync4 } from "fs";
@@ -2971,7 +2971,7 @@ async function handleTest(url) {
   }
 }
 
-// src/index.ts
+// console/index.ts
 var program = new Command;
 program.name("fressh").description("Fresh RSS - Lightweight RSS daemon and TUI reader for macOS").version("1.0.0");
 program.command("start").description("Start the RSS daemon").action(handleStart);
@@ -3004,5 +3004,5 @@ if (process.argv.length === 2) {
   program.parse();
 }
 
-//# debugId=3FDFFCED3C05E30D64756E2164756E21
+//# debugId=C566B799A1D9915664756E2164756E21
 //# sourceMappingURL=index.js.map

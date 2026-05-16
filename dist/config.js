@@ -2,12 +2,15 @@ import { readFileSync, existsSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
 const DEFAULT_CONFIG = {
-    databasePath: '~/Library/Application Support/rss-daemon/articles.db',
+    databasePath: '~/Library/Application Support/fressh/articles.db',
     logLevel: 'info',
     fetchInterval: 900, // 15 minutes
     maxConcurrentFetches: 5,
     httpTimeout: 30000, // 30 seconds
-    userAgent: 'rss-daemon/1.0',
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    excludeYouTubeShorts: false, // disabled by default for backward compatibility
+    maxArticleAgeDays: 30, // only process articles published within last 30 days
+    allowInsecureCertificates: false, // disabled by default for security
 };
 function expandPath(path) {
     if (path.startsWith('~/')) {
@@ -19,7 +22,7 @@ export function loadConfig() {
     // Start with defaults
     let config = { ...DEFAULT_CONFIG };
     // Try to load from config file
-    const configPath = expandPath('~/.rss-daemon/config.json');
+    const configPath = expandPath('~/.fressh/config.json');
     if (existsSync(configPath)) {
         try {
             const fileConfig = JSON.parse(readFileSync(configPath, 'utf-8'));
@@ -30,14 +33,14 @@ export function loadConfig() {
         }
     }
     // Override with environment variables
-    if (process.env.RSS_DAEMON_DB_PATH) {
-        config.databasePath = process.env.RSS_DAEMON_DB_PATH;
+    if (process.env.FRESSH_DB_PATH) {
+        config.databasePath = process.env.FRESSH_DB_PATH;
     }
-    if (process.env.RSS_DAEMON_LOG_LEVEL) {
-        config.logLevel = process.env.RSS_DAEMON_LOG_LEVEL;
+    if (process.env.FRESSH_LOG_LEVEL) {
+        config.logLevel = process.env.FRESSH_LOG_LEVEL;
     }
-    if (process.env.RSS_DAEMON_FETCH_INTERVAL) {
-        config.fetchInterval = parseInt(process.env.RSS_DAEMON_FETCH_INTERVAL, 10);
+    if (process.env.FRESSH_FETCH_INTERVAL) {
+        config.fetchInterval = parseInt(process.env.FRESSH_FETCH_INTERVAL, 10);
     }
     // Expand tilde in database path
     config.databasePath = expandPath(config.databasePath);

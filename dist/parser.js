@@ -9,9 +9,38 @@ const parser = new Parser({
         ],
     },
 });
-export async function parseFeed(feedContent) {
+function isYouTubeShort(url) {
+    if (!url)
+        return false;
+    return url.includes('youtube.com/shorts/') || url.includes('youtu.be/shorts/');
+}
+function sanitizeXml(xml) {
+    // Fix malformed HTML/XML entities that have invalid characters
+    // This handles cases like &amp_; or other malformed entity names
+    return xml.replace(/&([^a-zA-Z#]|[a-zA-Z]+[^a-zA-Z0-9;])/g, '&amp;$1');
+}
+function isHtmlPage(content) {
+    // Check if content looks like an HTML page rather than an RSS/Atom feed
+    const trimmed = content.trim();
+    if (trimmed.startsWith('<!DOCTYPE html') || trimmed.startsWith('<html')) {
+        return true;
+    }
+    // Check for common HTML-only tags early in the content (first 1000 chars)
+    const firstPart = trimmed.slice(0, 1000).toLowerCase();
+    return (firstPart.includes('<head>') ||
+        firstPart.includes('<body>') ||
+        (firstPart.includes('<html') && !firstPart.includes('<rss') && !firstPart.includes('<feed')));
+}
+export async function parseFeed(feedContent, config) {
     try {
-        const feed = await parser.parseString(feedContent);
+        // Check if this is an HTML page, not a feed
+        if (isHtmlPage(feedContent)) {
+            logger.error('This appears to be an HTML page, not an RSS/Atom feed');
+            return null;
+        }
+        // Sanitize XML to handle malformed entities
+        const sanitizedContent = sanitizeXml(feedContent);
+        const feed = await parser.parseString(sanitizedContent);
         if (!feed || !feed.items) {
             logger.error('Invalid feed structure - no items found');
             return null;
@@ -19,6 +48,11 @@ export async function parseFeed(feedContent) {
         const articles = [];
         for (const item of feed.items) {
             const anyItem = item;
+            // Always skip YouTube Shorts
+            if (isYouTubeShort(item.link)) {
+                logger.debug(`Skipping YouTube Short: ${item.title || item.link}`);
+                continue;
+            }
             // Generate guid - prefer item.id, fallback to link, then title
             const guid = item.guid || anyItem.id || item.link || item.title || `${Date.now()}-${Math.random()}`;
             // Extract content in order of preference
@@ -50,10 +84,26 @@ export async function parseFeed(feedContent) {
                 published_at: publishedAt || new Date(),
             });
         }
+        // Filter articles by age if configured
+        let filteredArticles = articles;
+        if (config?.maxArticleAgeDays && config.maxArticleAgeDays > 0) {
+            const cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() - config.maxArticleAgeDays);
+            const beforeFilter = articles.length;
+            filteredArticles = articles.filter(article => {
+                if (!article.published_at)
+                    return true; // keep articles without dates
+                return article.published_at >= cutoffDate;
+            });
+            const filtered = beforeFilter - filteredArticles.length;
+            if (filtered > 0) {
+                logger.debug(`Filtered out ${filtered} articles older than ${config.maxArticleAgeDays} days`);
+            }
+        }
         return {
             title: feed.title,
             siteUrl: feed.link,
-            articles,
+            articles: filteredArticles,
         };
     }
     catch (error) {

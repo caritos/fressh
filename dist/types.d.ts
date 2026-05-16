@@ -5,6 +5,9 @@ export interface Config {
     maxConcurrentFetches: number;
     httpTimeout: number;
     userAgent: string;
+    excludeYouTubeShorts?: boolean;
+    maxArticleAgeDays?: number;
+    allowInsecureCertificates?: boolean;
 }
 export interface Feed {
     id?: number;

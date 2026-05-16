@@ -9,6 +9,7 @@ export interface FetchOptions {
     userAgent?: string;
     lastModified?: string;
     etag?: string;
+    allowInsecureCertificates?: boolean;
 }
 export declare function fetchFeed(url: string, options?: FetchOptions): Promise<FetchResult | null>;
 //# sourceMappingURL=fetcher.d.ts.map

@@ -1,7 +1,7 @@
-import Database from 'better-sqlite3';
 import { mkdirSync, existsSync } from 'fs';
 import { dirname } from 'path';
 import { logger } from './logger.js';
+import { createDatabase } from './database-adapter.js';
 class DatabaseManager {
     db = null;
     preparedStatements = new Map();
@@ -12,7 +12,7 @@ class DatabaseManager {
             mkdirSync(dir, { recursive: true });
         }
         // Open database with WAL mode for better concurrency
-        this.db = new Database(dbPath);
+        this.db = createDatabase(dbPath);
         this.db.pragma('journal_mode = WAL');
         this.db.pragma('foreign_keys = ON');
         // Create schema
@@ -58,6 +58,31 @@ class DatabaseManager {
       CREATE INDEX IF NOT EXISTS idx_articles_read ON articles(read);
       CREATE INDEX IF NOT EXISTS idx_articles_published_at ON articles(published_at DESC);
       CREATE INDEX IF NOT EXISTS idx_articles_guid ON articles(guid);
+
+      -- Full-text search index
+      CREATE VIRTUAL TABLE IF NOT EXISTS articles_fts USING fts5(
+        title,
+        content_text,
+        summary,
+        content=articles,
+        content_rowid=id
+      );
+
+      -- Triggers to keep FTS index in sync
+      CREATE TRIGGER IF NOT EXISTS articles_ai AFTER INSERT ON articles BEGIN
+        INSERT INTO articles_fts(rowid, title, content_text, summary)
+        VALUES (new.id, new.title, new.content_text, new.summary);
+      END;
+
+      CREATE TRIGGER IF NOT EXISTS articles_ad AFTER DELETE ON articles BEGIN
+        DELETE FROM articles_fts WHERE rowid = old.id;
+      END;
+
+      CREATE TRIGGER IF NOT EXISTS articles_au AFTER UPDATE ON articles BEGIN
+        DELETE FROM articles_fts WHERE rowid = old.id;
+        INSERT INTO articles_fts(rowid, title, content_text, summary)
+        VALUES (new.id, new.title, new.content_text, new.summary);
+      END;
     `);
     }
     getStatement(key, sql) {
@@ -124,24 +149,23 @@ class DatabaseManager {
             throw new Error('Database not initialized');
         if (articles.length === 0)
             return 0;
-        let insertCount = 0;
         const insertStmt = this.db.prepare(`
-      INSERT INTO articles (
+      INSERT OR IGNORE INTO articles (
         feed_id, guid, title, url, author,
         content_html, content_text, summary, published_at
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(feed_id, guid) DO NOTHING
     `);
         const transaction = this.db.transaction((articles) => {
+            let insertCount = 0;
             for (const article of articles) {
                 const result = insertStmt.run(article.feed_id, article.guid, article.title || null, article.url || null, article.author || null, article.content_html || null, article.content_text || null, article.summary || null, article.published_at ? article.published_at.toISOString() : null);
                 if (result.changes > 0)
                     insertCount++;
             }
+            return insertCount;
         });
-        transaction(articles);
-        return insertCount;
+        return transaction(articles);
     }
     getUnreadArticles(limit) {
         const sql = limit
@@ -159,6 +183,15 @@ class DatabaseManager {
     markAllAsRead() {
         const stmt = this.getStatement('markAllRead', 'UPDATE articles SET read = 1');
         stmt.run();
+    }
+    markFeedAsRead(feedUrl) {
+        const feed = this.getFeed(feedUrl);
+        if (!feed || !feed.id)
+            return 0;
+        if (!this.db)
+            throw new Error('Database not initialized');
+        const result = this.db.prepare('UPDATE articles SET read = 1 WHERE feed_id = ? AND read = 0').run(feed.id);
+        return result.changes;
     }
     toggleStarred(articleId) {
         if (!this.db)
@@ -190,6 +223,115 @@ class DatabaseManager {
       WHERE read = 1 AND starred = 0 AND published_at < ?
     `).run(cutoffDate.toISOString());
         return result.changes;
+    }
+    deleteYouTubeShorts() {
+        if (!this.db)
+            throw new Error('Database not initialized');
+        const result = this.db.prepare(`
+      DELETE FROM articles
+      WHERE url LIKE '%youtube.com/shorts/%' OR url LIKE '%youtu.be/shorts/%'
+    `).run();
+        return result.changes;
+    }
+    removeDuplicateUrls() {
+        if (!this.db)
+            throw new Error('Database not initialized');
+        // Keep the oldest article for each URL, delete newer duplicates
+        const result = this.db.prepare(`
+      DELETE FROM articles
+      WHERE id NOT IN (
+        SELECT MIN(id)
+        FROM articles
+        WHERE url IS NOT NULL
+        GROUP BY url
+      ) AND url IS NOT NULL
+    `).run();
+        const deletedCount = result.changes || 0;
+        logger.info(`Removed ${deletedCount} duplicate URLs`);
+        // Now create the unique index to prevent future duplicates
+        try {
+            this.db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_articles_url_unique ON articles(url) WHERE url IS NOT NULL');
+            logger.info('Created unique index on article URLs');
+        }
+        catch (error) {
+            logger.warn('Could not create unique URL index (may already exist):', error);
+        }
+        return deletedCount;
+    }
+    searchArticles(query, feedId, showUnreadOnly = true) {
+        if (!this.db)
+            throw new Error('Database not initialized');
+        if (!query || query.trim().length === 0)
+            return [];
+        // Escape FTS5 special characters and prepare query
+        const sanitizedQuery = query
+            .replace(/[:"*]/g, ' ')
+            .trim()
+            .split(/\s+/)
+            .map(term => `"${term}"*`)
+            .join(' OR ');
+        let sql;
+        let params;
+        if (feedId === null || feedId === undefined) {
+            // Search all feeds
+            sql = showUnreadOnly
+                ? `SELECT a.*, f.title as feed_title
+           FROM articles a
+           LEFT JOIN feeds f ON a.feed_id = f.id
+           WHERE a.id IN (
+             SELECT rowid FROM articles_fts WHERE articles_fts MATCH ?
+           ) AND a.read = 0
+           ORDER BY a.published_at DESC
+           LIMIT 500`
+                : `SELECT a.*, f.title as feed_title
+           FROM articles a
+           LEFT JOIN feeds f ON a.feed_id = f.id
+           WHERE a.id IN (
+             SELECT rowid FROM articles_fts WHERE articles_fts MATCH ?
+           )
+           ORDER BY a.published_at DESC
+           LIMIT 500`;
+            params = [sanitizedQuery];
+        }
+        else {
+            // Search specific feed
+            sql = showUnreadOnly
+                ? `SELECT a.*, f.title as feed_title
+           FROM articles a
+           LEFT JOIN feeds f ON a.feed_id = f.id
+           WHERE a.id IN (
+             SELECT rowid FROM articles_fts WHERE articles_fts MATCH ?
+           ) AND a.feed_id = ? AND a.read = 0
+           ORDER BY a.published_at DESC
+           LIMIT 500`
+                : `SELECT a.*, f.title as feed_title
+           FROM articles a
+           LEFT JOIN feeds f ON a.feed_id = f.id
+           WHERE a.id IN (
+             SELECT rowid FROM articles_fts WHERE articles_fts MATCH ?
+           ) AND a.feed_id = ?
+           ORDER BY a.published_at DESC
+           LIMIT 500`;
+            params = [sanitizedQuery, feedId];
+        }
+        try {
+            return this.db.prepare(sql).all(...params);
+        }
+        catch (error) {
+            logger.error('Search error:', error);
+            return [];
+        }
+    }
+    rebuildSearchIndex() {
+        if (!this.db)
+            throw new Error('Database not initialized');
+        // Rebuild FTS index from scratch
+        this.db.exec(`
+      DELETE FROM articles_fts;
+      INSERT INTO articles_fts(rowid, title, content_text, summary)
+      SELECT id, title, content_text, summary FROM articles;
+    `);
+        logger.info('Search index rebuilt successfully');
     }
     close() {
         if (this.db) {

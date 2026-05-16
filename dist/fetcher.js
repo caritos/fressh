@@ -1,10 +1,13 @@
 import axios from 'axios';
+import https from 'https';
 import { logger } from './logger.js';
 export async function fetchFeed(url, options = {}) {
-    const { timeout = 30000, userAgent = 'rss-daemon/1.0', lastModified, etag, } = options;
+    const { timeout = 30000, userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36', lastModified, etag, allowInsecureCertificates = false, } = options;
     try {
         const headers = {
             'User-Agent': userAgent,
+            'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+            'Accept-Language': 'en-US,en;q=0.9',
         };
         // Add conditional request headers
         if (lastModified) {
@@ -14,9 +17,14 @@ export async function fetchFeed(url, options = {}) {
             headers['If-None-Match'] = etag;
         }
         logger.debug(`Fetching ${url}`);
+        // Configure HTTPS agent to handle certificate issues
+        const httpsAgent = allowInsecureCertificates
+            ? new https.Agent({ rejectUnauthorized: false })
+            : undefined;
         const response = await axios.get(url, {
             headers,
             timeout,
+            httpsAgent,
             validateStatus: (status) => status < 500, // Don't throw on 4xx errors
         });
         // Handle 304 Not Modified

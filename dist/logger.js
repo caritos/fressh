@@ -14,7 +14,7 @@ class Logger {
         this.level = level;
     }
     enableFileLogging(logDir) {
-        const dir = logDir || join(homedir(), 'Library', 'Logs', 'rss-daemon');
+        const dir = logDir || join(homedir(), 'Library', 'Logs', 'fressh');
         if (!existsSync(dir)) {
             mkdirSync(dir, { recursive: true });
         }

@@ -19,9 +19,14 @@ declare class DatabaseManager {
     getUnreadArticles(limit?: number): Article[];
     markArticleAsRead(articleId: number): void;
     markAllAsRead(): void;
+    markFeedAsRead(feedUrl: string): number;
     toggleStarred(articleId: number): void;
     getStats(): FeedStats;
     deleteOldArticles(daysOld: number): number;
+    deleteYouTubeShorts(): number;
+    removeDuplicateUrls(): number;
+    searchArticles(query: string, feedId?: number | null, showUnreadOnly?: boolean): Article[];
+    rebuildSearchIndex(): void;
     close(): void;
 }
 export declare const database: DatabaseManager;

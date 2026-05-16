@@ -9,5 +9,9 @@ export declare class Daemon {
     private fetchOne;
     private waitForShutdown;
     refresh(): Promise<void>;
+    private ensurePinboardFeed;
+    private scrapePinboard;
+    private ensureHackerNewsFeed;
+    private scrapeHackerNews;
 }
 //# sourceMappingURL=daemon.d.ts.map

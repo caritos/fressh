@@ -36,38 +36,76 @@ export async function handleAdd(url) {
     const config = loadConfig();
     logger.setLevel(config.logLevel);
     database.initialize(config.databasePath);
-    // Check if feed already exists
-    const existing = database.getFeed(url);
+    let feedUrl = url;
+    // Check if this is a Reddit subreddit URL (not already an RSS feed)
+    if (url.includes('reddit.com/r/') && !url.endsWith('.rss')) {
+        const redditRss = convertRedditToRss(url);
+        if (redditRss) {
+            console.log('🔴 Reddit subreddit detected, converting to RSS feed URL...');
+            feedUrl = redditRss;
+            console.log(`✓ Using: ${feedUrl}\n`);
+        }
+    }
+    // Check if this is a YouTube channel page URL (not already a feed URL)
+    else if (url.includes('youtube.com') && !url.includes('/feeds/videos.xml')) {
+        console.log('🎥 YouTube channel detected, converting to RSS feed URL...');
+        const channelId = await getYouTubeChannelId(url);
+        if (!channelId) {
+            console.log('❌ Could not extract channel ID from this URL');
+            console.log('   Make sure it\'s a valid YouTube channel URL');
+            database.close();
+            process.exit(1);
+        }
+        feedUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
+        console.log(`✓ Using: ${feedUrl}\n`);
+    }
+    // Check if feed already exists (check both original URL and converted URL)
+    const existingConverted = database.getFeed(feedUrl);
+    const existingOriginal = url !== feedUrl ? database.getFeed(url) : null;
+    const existing = existingConverted || existingOriginal;
     if (existing) {
-        console.log(`Feed already exists: ${existing.title || url}`);
+        console.log(`\n⚠️  Feed already exists!`);
+        console.log(`   Title: ${existing.title || 'Unknown'}`);
+        console.log(`   URL: ${existing.url}`);
+        if (existing.last_fetch) {
+            const lastFetch = new Date(existing.last_fetch);
+            console.log(`   Last fetched: ${lastFetch.toLocaleString()}`);
+        }
+        console.log(`\n💡 This feed is already being tracked by the daemon`);
         database.close();
         return;
     }
     // Try to fetch and parse the feed to validate it
-    console.log(`Validating feed: ${url}...`);
-    const fetchResult = await fetchFeed(url, {
+    console.log(`Checking for duplicates... ✓ Not found`);
+    console.log(`Validating feed...`);
+    const fetchResult = await fetchFeed(feedUrl, {
         timeout: config.httpTimeout,
         userAgent: config.userAgent,
+        allowInsecureCertificates: config.allowInsecureCertificates,
     });
     if (!fetchResult) {
-        logger.error('Failed to fetch feed');
+        console.log('❌ Failed to fetch feed');
+        console.log('   This feed may be unavailable or blocking requests');
         database.close();
         process.exit(1);
     }
-    const parsed = await parseFeed(fetchResult.data);
+    const parsed = await parseFeed(fetchResult.data, config);
     if (!parsed) {
-        logger.error('Failed to parse feed');
+        console.log('❌ Failed to parse feed');
+        console.log('   This may not be a valid RSS/Atom feed');
         database.close();
         process.exit(1);
     }
     // Add feed to database
     database.addFeed({
-        url,
+        url: feedUrl,
         title: parsed.title,
         site_url: parsed.siteUrl,
     });
-    console.log(`\n✅ Added feed: ${parsed.title || url}`);
-    console.log(`   Articles: ${parsed.articles.length}`);
+    console.log(`\n✅ Added feed: ${parsed.title || feedUrl}`);
+    console.log(`   URL: ${feedUrl}`);
+    console.log(`   Articles available: ${parsed.articles.length}`);
+    console.log(`\n💡 The daemon will fetch this feed automatically every 10 minutes`);
     database.close();
 }
 export async function handleRemove(url) {
@@ -76,12 +114,37 @@ export async function handleRemove(url) {
     database.initialize(config.databasePath);
     const feed = database.getFeed(url);
     if (!feed) {
-        console.log('Feed not found');
+        console.log('❌ Feed not found');
+        console.log('\n💡 List all feeds with: ./rss list');
         database.close();
         return;
     }
     database.removeFeed(url);
     console.log(`\n✅ Removed feed: ${feed.title || url}`);
+    console.log(`   URL: ${url}`);
+    database.close();
+}
+export async function handleList() {
+    const config = loadConfig();
+    logger.setLevel(config.logLevel);
+    database.initialize(config.databasePath);
+    const feeds = database.getAllFeeds();
+    if (feeds.length === 0) {
+        console.log('No feeds found');
+        console.log('\n💡 Add feeds with: ./rss add <url>');
+        database.close();
+        return;
+    }
+    console.log(`\n📋 Feeds (${feeds.length} total)\n`);
+    for (const feed of feeds) {
+        console.log(`• ${feed.title || 'Untitled'}`);
+        console.log(`  ${feed.url}`);
+        if (feed.last_fetch) {
+            const lastFetch = new Date(feed.last_fetch);
+            console.log(`  Last fetched: ${lastFetch.toLocaleString()}`);
+        }
+        console.log('');
+    }
     database.close();
 }
 export async function handleStats() {
@@ -89,7 +152,7 @@ export async function handleStats() {
     logger.setLevel(config.logLevel);
     database.initialize(config.databasePath);
     const stats = database.getStats();
-    console.log('\n📊 RSS Daemon Statistics\n');
+    console.log('\n📊 fressh Statistics\n');
     console.log(`Feeds:          ${stats.enabledFeeds} enabled / ${stats.totalFeeds} total`);
     console.log(`Articles:       ${stats.totalArticles.toLocaleString()}`);
     console.log(`Unread:         ${stats.unreadArticles.toLocaleString()}`);
@@ -104,12 +167,53 @@ export async function handleMarkAllRead() {
     console.log('\n✅ Marked all articles as read');
     database.close();
 }
+export async function handleMarkFeedRead(url) {
+    const config = loadConfig();
+    logger.setLevel(config.logLevel);
+    database.initialize(config.databasePath);
+    const feed = database.getFeed(url);
+    if (!feed) {
+        console.log('❌ Feed not found');
+        console.log('\n💡 List all feeds with: fressh list');
+        database.close();
+        return;
+    }
+    const count = database.markFeedAsRead(url);
+    console.log(`\n✅ Marked ${count} articles as read from: ${feed.title || url}`);
+    database.close();
+}
 export async function handleCleanup(days = 30) {
     const config = loadConfig();
     logger.setLevel(config.logLevel);
     database.initialize(config.databasePath);
     const deleted = database.deleteOldArticles(days);
     console.log(`\n✅ Deleted ${deleted} old articles (older than ${days} days)`);
+    database.close();
+}
+export async function handleDeleteShorts() {
+    const config = loadConfig();
+    logger.setLevel(config.logLevel);
+    database.initialize(config.databasePath);
+    const deleted = database.deleteYouTubeShorts();
+    console.log(`\n✅ Deleted ${deleted} YouTube Shorts from the database`);
+    database.close();
+}
+export async function handleRemoveDuplicates() {
+    const config = loadConfig();
+    logger.setLevel(config.logLevel);
+    database.initialize(config.databasePath);
+    console.log('Removing duplicate URLs...');
+    const deleted = database.removeDuplicateUrls();
+    console.log(`\n✅ Removed ${deleted} duplicate articles`);
+    database.close();
+}
+export async function handleRebuildSearchIndex() {
+    const config = loadConfig();
+    logger.setLevel(config.logLevel);
+    database.initialize(config.databasePath);
+    console.log('Rebuilding search index...');
+    database.rebuildSearchIndex();
+    console.log('\n✅ Search index rebuilt successfully');
     database.close();
 }
 export async function handleRefresh() {
@@ -136,7 +240,7 @@ export async function handleLogs(options) {
     const { join } = await import('path');
     const { existsSync, readFileSync } = await import('fs');
     const { spawn } = await import('child_process');
-    const logFile = join(homedir(), 'Library', 'Logs', 'rss-daemon', 'daemon.log');
+    const logFile = join(homedir(), 'Library', 'Logs', 'fressh', 'daemon.log');
     if (!existsSync(logFile)) {
         console.log('❌ Log file not found at:', logFile);
         console.log('\nThe daemon may not have been started yet, or file logging is not enabled.');
@@ -164,19 +268,127 @@ export async function handleLogs(options) {
         console.log(`💡 Use --follow to watch logs in real-time`);
     }
 }
+async function getYouTubeChannelId(url) {
+    try {
+        const response = await fetchFeed(url, { timeout: 10000, userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' });
+        if (!response)
+            return null;
+        const match = response.data.match(/channel_id=([a-zA-Z0-9_-]{24})/);
+        return match ? match[1] : null;
+    }
+    catch {
+        return null;
+    }
+}
+function convertRedditToRss(url) {
+    // Match Reddit subreddit URLs
+    const match = url.match(/reddit\.com\/r\/([a-zA-Z0-9_]+)\/?$/);
+    if (match) {
+        // Use /top/.rss?t=month&limit=10 to get only the top 10 posts from this month
+        // This reduces noise and shows only highly popular content
+        return `https://www.reddit.com/r/${match[1]}/top/.rss?t=month&limit=10`;
+    }
+    return null;
+}
+export async function handleView() {
+    const config = loadConfig();
+    logger.setLevel(config.logLevel);
+    database.initialize(config.databasePath);
+    const { ArticleViewer } = await import('./tui.js');
+    const viewer = new ArticleViewer();
+    viewer.start();
+}
+export async function handleRead(options) {
+    const config = loadConfig();
+    logger.setLevel(config.logLevel);
+    database.initialize(config.databasePath);
+    const limit = options.limit || 20;
+    const articles = options.unread
+        ? database.getUnreadArticles(limit)
+        : (() => {
+            // Get all articles, not just unread
+            // @ts-ignore - accessing private db
+            const db = database['db'];
+            if (!db)
+                return [];
+            return db.prepare('SELECT a.*, f.title as feed_title FROM articles a LEFT JOIN feeds f ON a.feed_id = f.id ORDER BY a.published_at DESC LIMIT ?').all(limit);
+        })();
+    if (articles.length === 0) {
+        console.log('\n📭 No articles found');
+        console.log('\n💡 The daemon needs to fetch feeds first: fressh start');
+        database.close();
+        return;
+    }
+    console.log(`\n📰 ${options.unread ? 'Unread' : 'Recent'} Articles (${articles.length} shown)\n`);
+    for (let i = 0; i < articles.length; i++) {
+        const article = articles[i];
+        const readIndicator = article.read ? '  ' : '● ';
+        const starIndicator = article.starred ? '⭐ ' : '';
+        console.log(`${i + 1}. ${readIndicator}${starIndicator}${article.title || 'Untitled'}`);
+        console.log(`   Feed: ${article.feed_title || 'Unknown'}`);
+        if (article.url) {
+            console.log(`   URL: ${article.url}`);
+        }
+        if (article.published_at) {
+            const date = new Date(article.published_at);
+            console.log(`   Published: ${date.toLocaleString()}`);
+        }
+        console.log('');
+    }
+    console.log(`💡 Use 'fressh view' for an interactive interface`);
+    database.close();
+}
 export async function handleTest(url) {
     const config = loadConfig();
     logger.setLevel(config.logLevel);
-    console.log(`\n🧪 Testing feed: ${url}\n`);
+    let testUrl = url;
+    let isYouTubeChannelPage = false;
+    let isRedditSubreddit = false;
+    let shouldCopyToClipboard = false;
+    // Check if this is a Reddit subreddit URL (not already an RSS feed)
+    if (url.includes('reddit.com/r/') && !url.endsWith('.rss')) {
+        const redditRss = convertRedditToRss(url);
+        if (redditRss) {
+            isRedditSubreddit = true;
+            shouldCopyToClipboard = true;
+            console.log(`\n🔴 Reddit subreddit detected: ${url}\n`);
+            console.log('Converting to RSS feed URL...');
+            testUrl = redditRss;
+            console.log(`\n✅ Correct RSS feed URL:\n   ${testUrl}\n`);
+        }
+    }
+    // Check if this is a YouTube channel page URL (not already a feed URL)
+    else if (url.includes('youtube.com') && !url.includes('/feeds/videos.xml')) {
+        isYouTubeChannelPage = true;
+        shouldCopyToClipboard = true;
+        console.log(`\n🎥 YouTube channel detected: ${url}\n`);
+        console.log('Converting to RSS feed URL...');
+        const channelId = await getYouTubeChannelId(url);
+        if (!channelId) {
+            console.log('❌ Could not extract channel ID from this URL');
+            console.log('   Make sure it\'s a valid YouTube channel URL');
+            console.log('\n💡 YouTube feed URLs should be in this format:');
+            console.log('   https://www.youtube.com/feeds/videos.xml?channel_id=CHANNEL_ID');
+            process.exit(1);
+        }
+        testUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
+        console.log(`\n✅ Correct RSS feed URL:\n   ${testUrl}\n`);
+    }
+    console.log(`\n🧪 Testing feed: ${testUrl}\n`);
     // Fetch the feed
     console.log('Fetching...');
-    const fetchResult = await fetchFeed(url, {
+    const fetchResult = await fetchFeed(testUrl, {
         timeout: config.httpTimeout,
         userAgent: config.userAgent,
+        allowInsecureCertificates: config.allowInsecureCertificates,
     });
     if (!fetchResult) {
         console.log('❌ Failed to fetch feed');
         console.log('   This feed may be unavailable or blocking requests');
+        if (isYouTubeChannelPage) {
+            console.log('\n💡 For YouTube feeds, use:');
+            console.log(`   ${testUrl}`);
+        }
         process.exit(1);
     }
     console.log(`✓ Fetched successfully (${fetchResult.data.length} bytes)`);
@@ -188,10 +400,18 @@ export async function handleTest(url) {
     console.log('');
     // Parse the feed
     console.log('Parsing...');
-    const parsed = await parseFeed(fetchResult.data);
+    const parsed = await parseFeed(fetchResult.data, config);
     if (!parsed) {
         console.log('❌ Failed to parse feed');
         console.log('   This may not be a valid RSS/Atom feed');
+        if (isYouTubeChannelPage) {
+            console.log('\n💡 The correct YouTube feed URL is:');
+            console.log(`   ${testUrl}`);
+        }
+        else if (isRedditSubreddit) {
+            console.log('\n💡 The correct Reddit feed URL is:');
+            console.log(`   ${testUrl}`);
+        }
         process.exit(1);
     }
     console.log(`✓ Parsed successfully`);
@@ -215,5 +435,22 @@ export async function handleTest(url) {
         console.log('⚠️  No articles found in feed (may be empty)');
     }
     console.log('\n✅ Feed is valid and can be added!');
+    if (isYouTubeChannelPage || isRedditSubreddit) {
+        console.log('\n📝 Use this URL in your OPML:');
+        console.log(`   ${testUrl}`);
+    }
+    // Copy the actual feed URL to clipboard if it was converted
+    if (shouldCopyToClipboard) {
+        try {
+            const { spawn } = await import('child_process');
+            const pbcopy = spawn('pbcopy');
+            pbcopy.stdin.write(testUrl);
+            pbcopy.stdin.end();
+            console.log('\n📋 Feed URL copied to clipboard!');
+        }
+        catch (error) {
+            // Silent fail if clipboard copy doesn't work
+        }
+    }
 }
 //# sourceMappingURL=cli.js.map
