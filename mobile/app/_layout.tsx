@@ -1,6 +1,11 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import { useFonts } from 'expo-font';
+import {
+  Barlow_400Regular,
+  Barlow_500Medium,
+  Barlow_700Bold,
+} from '@expo-google-fonts/barlow';
 import * as SplashScreen from 'expo-splash-screen';
 import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -11,15 +16,19 @@ import { COLORS, FONTS } from '../src/constants';
 
 SplashScreen.preventAutoHideAsync();
 
-const FOREGROUND_REFRESH_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
+const FOREGROUND_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
 
 export default function RootLayout() {
   const lastFetchAt = useRef<number | null>(null);
+  const [dbReady, setDbReady] = useState(false);
 
   const [fontsLoaded, fontError] = useFonts({
-    [FONTS.regular]: require('../assets/fonts/JetBrainsMono-Regular.ttf'),
-    [FONTS.medium]: require('../assets/fonts/JetBrainsMono-Medium.ttf'),
-    [FONTS.bold]: require('../assets/fonts/JetBrainsMono-Bold.ttf'),
+    [FONTS.sans]: Barlow_400Regular,
+    [FONTS.sansMedium]: Barlow_500Medium,
+    [FONTS.sansBold]: Barlow_700Bold,
+    [FONTS.mono]: require('../assets/fonts/JetBrainsMono-Regular.ttf'),
+    [FONTS.monoMedium]: require('../assets/fonts/JetBrainsMono-Medium.ttf'),
+    [FONTS.monoBold]: require('../assets/fonts/JetBrainsMono-Bold.ttf'),
   });
 
   useEffect(() => {
@@ -27,8 +36,8 @@ export default function RootLayout() {
     async function init() {
       try {
         await initDb();
+        setDbReady(true);
         await registerBackgroundFetch();
-        // Initial fetch on first launch
         lastFetchAt.current = Date.now();
         refresh().catch(console.error);
       } catch (e) {
@@ -54,6 +63,7 @@ export default function RootLayout() {
   }, []);
 
   if (!fontsLoaded && !fontError) return null;
+  if (!dbReady) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -61,11 +71,11 @@ export default function RootLayout() {
         screenOptions={{
           headerStyle: { backgroundColor: COLORS.surface },
           headerTintColor: COLORS.text,
-          headerTitleStyle: { fontFamily: FONTS.bold, fontSize: 16 },
+          headerTitleStyle: { fontFamily: FONTS.sansBold, fontSize: 14, letterSpacing: 0.5 },
           contentStyle: { backgroundColor: COLORS.background },
         }}
       >
-        <Stack.Screen name="feeds/index" options={{ title: 'fressh' }} />
+        <Stack.Screen name="feeds/index" options={{ title: 'FRESSH' }} />
       </Stack>
     </GestureHandlerRootView>
   );
