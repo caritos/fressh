@@ -3,6 +3,7 @@ import { dirname } from 'path';
 import type { Feed, Article, FeedStats } from './types.js';
 import { logger } from './logger.js';
 import { createDatabase, type DatabaseInstance, type Statement } from './database-adapter.js';
+import { CREATE_FEEDS, CREATE_ARTICLES, CREATE_INDEXES } from '../shared/schema.js';
 
 class DatabaseManager {
   private db: DatabaseInstance | null = null;
@@ -28,44 +29,14 @@ class DatabaseManager {
   private createSchema(): void {
     if (!this.db) throw new Error('Database not initialized');
 
+    this.db.exec(CREATE_FEEDS);
+    this.db.exec(CREATE_ARTICLES);
+    for (const sql of CREATE_INDEXES) {
+      this.db.exec(sql);
+    }
+
+    // Console-only: full-text search index
     this.db.exec(`
-      CREATE TABLE IF NOT EXISTS feeds (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        url TEXT UNIQUE NOT NULL,
-        title TEXT,
-        site_url TEXT,
-        last_fetch DATETIME,
-        last_modified TEXT,
-        etag TEXT,
-        fetch_interval INTEGER DEFAULT 900,
-        enabled INTEGER DEFAULT 1,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS articles (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        feed_id INTEGER NOT NULL,
-        guid TEXT NOT NULL,
-        title TEXT,
-        url TEXT,
-        author TEXT,
-        content_html TEXT,
-        content_text TEXT,
-        summary TEXT,
-        published_at DATETIME,
-        fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        read INTEGER DEFAULT 0,
-        starred INTEGER DEFAULT 0,
-        FOREIGN KEY (feed_id) REFERENCES feeds(id) ON DELETE CASCADE,
-        UNIQUE(feed_id, guid)
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_articles_feed_id ON articles(feed_id);
-      CREATE INDEX IF NOT EXISTS idx_articles_read ON articles(read);
-      CREATE INDEX IF NOT EXISTS idx_articles_published_at ON articles(published_at DESC);
-      CREATE INDEX IF NOT EXISTS idx_articles_guid ON articles(guid);
-
-      -- Full-text search index
       CREATE VIRTUAL TABLE IF NOT EXISTS articles_fts USING fts5(
         title,
         content_text,
@@ -74,7 +45,6 @@ class DatabaseManager {
         content_rowid=id
       );
 
-      -- Triggers to keep FTS index in sync
       CREATE TRIGGER IF NOT EXISTS articles_ai AFTER INSERT ON articles BEGIN
         INSERT INTO articles_fts(rowid, title, content_text, summary)
         VALUES (new.id, new.title, new.content_text, new.summary);
