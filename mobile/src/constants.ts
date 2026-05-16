@@ -1,16 +1,19 @@
 export const FONTS = {
-  regular: 'JetBrainsMono-Regular',
-  medium: 'JetBrainsMono-Medium',
-  bold: 'JetBrainsMono-Bold',
+  sans: 'Barlow-Regular',
+  sansMedium: 'Barlow-Medium',
+  sansBold: 'Barlow-Bold',
+  mono: 'JetBrainsMono-Regular',
+  monoMedium: 'JetBrainsMono-Medium',
+  monoBold: 'JetBrainsMono-Bold',
 };
 
 export const COLORS = {
-  background: '#000000',
-  surface: '#111111',
-  surfaceHighlight: '#1a1a1a',
-  border: '#222222',
-  text: '#ffffff',
+  background: '#F5F5F0',
+  surface: '#EBEBEB',
+  surfaceAlt: '#E4E4DF',
+  border: '#D0D0C8',
+  text: '#111111',
   textSecondary: '#888888',
-  textDimmed: '#444444',
-  accent: '#6366f1',
+  textDimmed: '#BBBBB0',
+  accent: '#E8500A',
 };
