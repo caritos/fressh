@@ -6,7 +6,9 @@
     "orientation": "portrait",
     "scheme": "fressh",
     "userInterfaceStyle": "light",
-    "platforms": ["ios"],
+    "platforms": [
+      "ios"
+    ],
     "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/splash.png",
@@ -18,7 +20,10 @@
       "bundleIdentifier": "com.caritos.fressh",
       "buildNumber": "1",
       "infoPlist": {
-        "UIBackgroundModes": ["fetch", "remote-notification"]
+        "UIBackgroundModes": [
+          "fetch",
+          "remote-notification"
+        ]
       }
     },
     "plugins": [
@@ -26,7 +31,9 @@
       "expo-font",
       [
         "expo-dev-launcher",
-        { "launchMode": "most-recent" }
+        {
+          "launchMode": "most-recent"
+        }
       ],
       [
         "expo-notifications",
@@ -37,6 +44,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "25e1f438-3c70-4c94-aba6-dab8ddf6a780"
+      }
+    },
+    "owner": "sotirac"
   }
 }
