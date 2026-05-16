@@ -24,7 +24,9 @@
   "submit": {
     "production": {
       "ios": {
-        "appleId": "eladio@caritos.com"
+        "appleId": "eladio@caritos.com",
+        "ascAppId": "6770117291",
+        "appleTeamId": "3U8L77G9QV"
       }
     }
   }
