@@ -1,15 +1,22 @@
 {
   "expo": {
-    "name": "fressh",
+    "name": "Fressh",
     "slug": "fressh-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "fressh",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "light",
     "platforms": ["ios"],
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F5F5F0"
+    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.caritos.fressh",
+      "buildNumber": "1",
       "infoPlist": {
         "UIBackgroundModes": ["fetch", "remote-notification"]
       }
@@ -17,6 +24,10 @@
     "plugins": [
       "expo-router",
       "expo-font",
+      [
+        "expo-dev-launcher",
+        { "launchMode": "most-recent" }
+      ],
       [
         "expo-notifications",
         {
