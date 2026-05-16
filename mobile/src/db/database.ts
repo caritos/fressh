@@ -10,9 +10,16 @@ export function getDb(): SQLite.SQLiteDatabase {
   return _db;
 }
 
-export async function initDb(): Promise<void> {
-  if (_db) return; // idempotent
-  _db = await SQLite.openDatabaseAsync('fressh.db');
+export async function initDb(absolutePath?: string): Promise<void> {
+  if (_db) return;
+  if (absolutePath) {
+    const lastSlash = absolutePath.lastIndexOf('/');
+    const directory = absolutePath.slice(0, lastSlash);
+    const filename = absolutePath.slice(lastSlash + 1);
+    _db = await SQLite.openDatabaseAsync(filename, {}, directory);
+  } else {
+    _db = await SQLite.openDatabaseAsync('fressh.db');
+  }
   await _db.execAsync('PRAGMA journal_mode = WAL;');
   await _db.execAsync('PRAGMA foreign_keys = ON;');
   await _migrate(_db);
