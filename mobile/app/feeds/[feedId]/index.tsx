@@ -17,12 +17,14 @@ import {
   markRead,
   markUnread,
   markAllRead,
+  markAllUnreadRead,
   toggleStar,
   getFeeds,
   type ArticleRow,
 } from '../../../src/db/queries';
 import { refresh } from '../../../src/fetcher/refresh';
 import { FONTS, COLORS } from '../../../src/constants';
+import Row from '../../../src/components/ui/Row';
 
 const SMART_LABELS: Record<string, string> = {
   unread: 'All Unread',
@@ -86,14 +88,26 @@ export default function ArticleListScreen() {
   };
 
   const onMarkAllRead = async () => {
-    if (typeof feedId === 'string') return;
-    try {
-      const db = getDb();
-      await markAllRead(db, feedId);
-      await load();
-    } catch (e) {
-      Alert.alert('Error', 'Failed to mark all as read.');
-    }
+    const doMark = async () => {
+      try {
+        const db = getDb();
+        if (typeof feedId === 'number') {
+          await markAllRead(db, feedId);
+        } else if (feedId === 'unread') {
+          await markAllUnreadRead(db);
+        } else {
+          return;
+        }
+        await load();
+      } catch {
+        Alert.alert('Error', 'Failed to mark all as read.');
+      }
+    };
+
+    Alert.alert('Mark All Read', 'Mark every article in this list as read?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Mark All Read', onPress: doMark },
+    ]);
   };
 
   const onTap = async (article: ArticleRow) => {
@@ -109,7 +123,7 @@ export default function ArticleListScreen() {
   const renderRightActions = (article: ArticleRow) => (
     <View style={{ flexDirection: 'row' }}>
       <TouchableOpacity
-        style={[styles.swipeAction, { backgroundColor: '#f59e0b' }]}
+        style={[styles.swipeAction, { backgroundColor: '#B8860B' }]}
         onPress={async () => {
           const db = getDb();
           await toggleStar(db, article.id);
@@ -119,7 +133,7 @@ export default function ArticleListScreen() {
         <Text style={styles.swipeActionText}>{article.starred ? 'Unstar' : 'Star'}</Text>
       </TouchableOpacity>
       <TouchableOpacity
-        style={[styles.swipeAction, { backgroundColor: '#6366f1' }]}
+        style={[styles.swipeAction, { backgroundColor: '#555555' }]}
         onPress={async () => {
           if (article.url) await Share.share({ url: article.url, message: article.title ?? '' });
         }}
@@ -131,7 +145,10 @@ export default function ArticleListScreen() {
 
   const renderLeftActions = (article: ArticleRow) => (
     <TouchableOpacity
-      style={[styles.swipeAction, { backgroundColor: article.read ? '#10b981' : '#6b7280', minWidth: 80 }]}
+      style={[
+        styles.swipeAction,
+        { backgroundColor: article.read ? '#555555' : COLORS.accent, minWidth: 80 },
+      ]}
       onPress={async () => {
         const db = getDb();
         if (article.read) {
@@ -146,40 +163,32 @@ export default function ArticleListScreen() {
     </TouchableOpacity>
   );
 
-  const renderItem = useCallback(({ item }: { item: ArticleRow }) => (
-    <Swipeable
-      renderRightActions={() => renderRightActions(item)}
-      renderLeftActions={() => renderLeftActions(item)}
-    >
-      <TouchableOpacity
-        style={[styles.row, item.read ? styles.rowRead : null]}
-        onPress={() => onTap(item)}
-        activeOpacity={0.7}
+  const renderItem = useCallback(({ item }: { item: ArticleRow }) => {
+    const label = item.starred ? `★ ${item.title ?? 'Untitled'}` : (item.title ?? 'Untitled');
+    return (
+      <Swipeable
+        renderRightActions={() => renderRightActions(item)}
+        renderLeftActions={() => renderLeftActions(item)}
       >
-        <View style={{ flex: 1 }}>
-          <Text
-            style={[styles.title, item.read ? styles.titleRead : null]}
-            numberOfLines={2}
-          >
-            {item.starred ? '⭐ ' : ''}{item.title ?? 'Untitled'}
-          </Text>
-          <Text style={styles.meta}>{formatRelative(item.published_at)}</Text>
-        </View>
-      </TouchableOpacity>
-    </Swipeable>
-  ), [articles, feedId, rawId]);
+        <Row
+          label={label}
+          meta={formatRelative(item.published_at)}
+          dimmed={!!item.read}
+          onPress={() => onTap(item)}
+        />
+      </Swipeable>
+    );
+  }, [articles, feedId, rawId]);
 
   return (
     <>
       <Stack.Screen
         options={{
           title: feedTitle,
-          headerRight: typeof feedId === 'number'
+          headerRight: (typeof feedId === 'number' || feedId === 'unread')
             ? () => (
                 <TouchableOpacity onPress={onMarkAllRead} style={{ marginRight: 4 }}>
-                  <Text style={{ fontFamily: FONTS.regular, fontSize: 13, color: COLORS.accent }}>
-                    Mark All Read
-                  </Text>
+                  <Text style={styles.markAllRead}>Mark All Read</Text>
                 </TouchableOpacity>
               )
             : undefined,
@@ -202,25 +211,19 @@ export default function ArticleListScreen() {
 }
 
 const styles = StyleSheet.create({
-  row: {
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.border,
-    backgroundColor: COLORS.background,
+  markAllRead: {
+    fontFamily: FONTS.sansMedium,
+    fontSize: 13,
+    color: COLORS.accent,
   },
-  rowRead: { opacity: 0.4 },
-  title: { fontFamily: FONTS.bold, fontSize: 15, color: COLORS.text, lineHeight: 21, marginBottom: 3 },
-  titleRead: { fontFamily: FONTS.regular },
-  meta: { fontFamily: FONTS.regular, fontSize: 11, color: COLORS.textSecondary },
   swipeAction: {
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 18,
   },
-  swipeActionText: { fontFamily: FONTS.medium, fontSize: 13, color: '#fff' },
+  swipeActionText: { fontFamily: FONTS.sansBold, fontSize: 13, color: '#fff' },
   empty: {
-    fontFamily: FONTS.regular,
+    fontFamily: FONTS.sans,
     fontSize: 14,
     color: COLORS.textSecondary,
     textAlign: 'center',
