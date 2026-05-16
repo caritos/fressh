@@ -1,6 +1,7 @@
 import Parser from 'rss-parser';
 import type { Article, Config } from './types.js';
 import { logger } from './logger.js';
+import { isHtmlPage, stripHtml } from '../shared/html.js';
 
 const parser = new Parser({
   customFields: {
@@ -27,21 +28,6 @@ function sanitizeXml(xml: string): string {
   // Fix malformed HTML/XML entities that have invalid characters
   // This handles cases like &amp_; or other malformed entity names
   return xml.replace(/&([^a-zA-Z#]|[a-zA-Z]+[^a-zA-Z0-9;])/g, '&amp;$1');
-}
-
-function isHtmlPage(content: string): boolean {
-  // Check if content looks like an HTML page rather than an RSS/Atom feed
-  const trimmed = content.trim();
-  if (trimmed.startsWith('<!DOCTYPE html') || trimmed.startsWith('<html')) {
-    return true;
-  }
-  // Check for common HTML-only tags early in the content (first 1000 chars)
-  const firstPart = trimmed.slice(0, 1000).toLowerCase();
-  return (
-    firstPart.includes('<head>') ||
-    firstPart.includes('<body>') ||
-    (firstPart.includes('<html') && !firstPart.includes('<rss') && !firstPart.includes('<feed'))
-  );
 }
 
 export async function parseFeed(feedContent: string, config?: Config): Promise<ParsedFeed | null> {
@@ -140,16 +126,3 @@ export async function parseFeed(feedContent: string, config?: Config): Promise<P
   }
 }
 
-function stripHtml(html: string): string {
-  if (!html) return '';
-  // Simple HTML stripping - remove tags
-  return html
-    .replace(/<[^>]*>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .trim();
-}
