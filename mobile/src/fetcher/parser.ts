@@ -1,5 +1,5 @@
 import { XMLParser } from 'fast-xml-parser';
-import { isHtmlPage, stripHtml } from '../../../shared/html';
+import { isHtmlPage, stripHtml } from '../../shared/html';
 
 const xmlParser = new XMLParser({
   ignoreAttributes: false,
