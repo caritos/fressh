@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import { useFonts } from 'expo-font';
 import {
@@ -10,17 +10,22 @@ import * as SplashScreen from 'expo-splash-screen';
 import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { initDb } from '../src/db/database';
+import { loadDbConfig } from '../src/db/config';
+import { registerSetupCompleteCallback } from '../src/db/setup-complete';
 import { registerBackgroundFetch } from '../src/tasks/background';
 import { refresh } from '../src/fetcher/refresh';
 import { COLORS, FONTS } from '../src/constants';
+import SetupScreen from './setup';
 
 SplashScreen.preventAutoHideAsync();
 
 const FOREGROUND_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
 
+type AppPhase = 'loading' | 'setup' | 'ready';
+
 export default function RootLayout() {
   const lastFetchAt = useRef<number | null>(null);
-  const [dbReady, setDbReady] = useState(false);
+  const [appPhase, setAppPhase] = useState<AppPhase>('loading');
 
   const [fontsLoaded, fontError] = useFonts({
     [FONTS.sans]: Barlow_400Regular,
@@ -31,23 +36,40 @@ export default function RootLayout() {
     [FONTS.monoBold]: require('../assets/fonts/JetBrainsMono-Bold.ttf'),
   });
 
+  const startApp = useCallback(async (dbPath: string) => {
+    await initDb(dbPath);
+    await registerBackgroundFetch();
+    lastFetchAt.current = Date.now();
+    refresh().catch(console.error);
+    setAppPhase('ready');
+  }, []);
+
   useEffect(() => {
     if (!fontsLoaded && !fontError) return;
+
+    registerSetupCompleteCallback(async () => {
+      const config = await loadDbConfig();
+      if (config) await startApp(config.databasePath);
+    });
+
     async function init() {
       try {
-        await initDb();
-        setDbReady(true);
-        await registerBackgroundFetch();
-        lastFetchAt.current = Date.now();
-        refresh().catch(console.error);
+        const config = await loadDbConfig();
+        if (!config) {
+          setAppPhase('setup');
+          await SplashScreen.hideAsync();
+          return;
+        }
+        await startApp(config.databasePath);
       } catch (e) {
         console.error('App init error:', e);
       } finally {
         await SplashScreen.hideAsync();
       }
     }
+
     init();
-  }, [fontsLoaded, fontError]);
+  }, [fontsLoaded, fontError, startApp]);
 
   useEffect(() => {
     const handleAppState = (state: AppStateStatus) => {
@@ -63,7 +85,8 @@ export default function RootLayout() {
   }, []);
 
   if (!fontsLoaded && !fontError) return null;
-  if (!dbReady) return null;
+  if (appPhase === 'loading') return null;
+  if (appPhase === 'setup') return <SetupScreen />;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
