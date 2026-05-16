@@ -71,7 +71,7 @@ export default function RootLayout() {
         screenOptions={{
           headerStyle: { backgroundColor: COLORS.surface },
           headerTintColor: COLORS.text,
-          headerTitleStyle: { fontFamily: FONTS.sansBold, fontSize: 14, letterSpacing: 0.5 },
+          headerTitleStyle: { fontFamily: FONTS.sansBold, fontSize: 14 },
           contentStyle: { backgroundColor: COLORS.background },
         }}
       >
