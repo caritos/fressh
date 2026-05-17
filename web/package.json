@@ -1,0 +1,12 @@
+{
+  "name": "fressh-web",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch src/index.tsx",
+    "start": "bun run src/index.tsx"
+  },
+  "dependencies": {
+    "hono": "^4.7.0"
+  }
+}

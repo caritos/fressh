@@ -1,1 +1,3 @@
 .superpowers/
+.env
+web/node_modules/
