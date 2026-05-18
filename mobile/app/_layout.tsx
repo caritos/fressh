@@ -9,7 +9,7 @@ import {
 import * as SplashScreen from 'expo-splash-screen';
 import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { initDb } from '../src/db/database';
+import { initDb, getDb } from '../src/db/database';
 import { loadDbConfig } from '../src/db/config';
 import { registerSetupCompleteCallback } from '../src/db/setup-complete';
 import { registerBackgroundFetch } from '../src/tasks/background';
@@ -60,6 +60,9 @@ export default function RootLayout() {
           await SplashScreen.hideAsync();
           return;
         }
+        // Guard against fast refresh wiping the module-level _db while
+        // appPhase is already 'ready' — re-init silently if needed.
+        try { getDb(); } catch { await initDb(config.databasePath); }
         await startApp(config.databasePath);
       } catch (e) {
         console.error('App init error:', e);

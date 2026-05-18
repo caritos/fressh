@@ -4,6 +4,7 @@ import { CREATE_SCHEMA_VERSION, CREATE_FEEDS, CREATE_ARTICLES, CREATE_INDEXES } 
 const SCHEMA_VERSION = 1;
 
 let _db: SQLite.SQLiteDatabase | null = null;
+let _lastPath: string | undefined;
 
 export function getDb(): SQLite.SQLiteDatabase {
   if (!_db) throw new Error('Database not initialized — call initDb() first');
@@ -12,6 +13,7 @@ export function getDb(): SQLite.SQLiteDatabase {
 
 export async function initDb(absolutePath?: string): Promise<void> {
   if (_db) return;
+  _lastPath = absolutePath;
   if (absolutePath) {
     const lastSlash = absolutePath.lastIndexOf('/');
     const directory = absolutePath.slice(0, lastSlash);
