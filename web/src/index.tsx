@@ -299,6 +299,7 @@ const css = `
     padding: 12px 24px;
     font-size: 14px;
     font-weight: 600;
+    border-radius: 0;
   }
 
   /* ---- RESPONSIVE ---- */
