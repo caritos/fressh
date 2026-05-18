@@ -1,6 +1,8 @@
 {
   "platforms": ["ios"],
   "ios": {
-    "modules": ["ICloudModule"]
+    "modules": ["ICloudModule"],
+    "podspecPath": "fressh-icloud.podspec",
+    "swiftModuleName": "fressh_icloud"
   }
 }
