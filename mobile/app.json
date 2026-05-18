@@ -18,12 +18,23 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.caritos.fressh",
+      "entitlements": {
+        "com.apple.developer.icloud-container-identifiers": ["iCloud.com.caritos.fressh"],
+        "com.apple.developer.icloud-services": ["CloudDocuments"]
+      },
       "infoPlist": {
         "UIBackgroundModes": [
           "fetch",
           "remote-notification"
         ],
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSUbiquitousContainers": {
+          "iCloud.com.caritos.fressh": {
+            "NSUbiquitousContainerIsDocumentScopePublic": true,
+            "NSUbiquitousContainerSupportedFolderLevels": "Any",
+            "NSUbiquitousContainerName": "Fressh"
+          }
+        }
       }
     },
     "plugins": [
