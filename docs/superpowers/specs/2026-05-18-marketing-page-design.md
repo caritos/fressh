@@ -32,7 +32,7 @@ All content is centered on a single column, stacking vertically. Naturally mobil
 ## Sections
 
 ### 1. Nav
-- Logo (`Fressh`) left, bold
+- Logo left: `Fressh` with the R and SS letters highlighted in Braun orange `#FF6200` — rendered as `F<span>r</span>e<span>ss</span>h` — communicates RSS reader at a glance
 - Links right: `Support` · `Privacy` — uppercase, 0.35 opacity
 - 1px bottom border
 
