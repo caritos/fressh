@@ -345,29 +345,95 @@ app.get('/', (c) =>
     <Layout title="Fressh — Clean RSS for your iPhone">
       <main>
         <div class="hero">
-          <img src="/public/icon.png" alt="Fressh" class="app-icon" />
-          <h1>Fresh RSS for your iPhone.</h1>
-          <p>No algorithms. No ads. Just the feeds you subscribed to, in the order they were published.</p>
-          <a href="https://apps.apple.com/app/id6770117291" class="app-store-btn">Download on the App Store</a>
+          <div class="hero-label">Fressh · iOS · Free</div>
+          <h1>Read.<br />Nothing<br />extra.</h1>
+          <p>RSS for iPhone. No algorithms, no ads, no account required.</p>
+
+          <div class="phone-wrap">
+            <div class="phone">
+              <div class="phone-notch"></div>
+              <div class="phone-screen">
+                <img
+                  src="/public/screenshots/screenshot-1.png"
+                  alt="Fressh app screenshot"
+                  class="screenshot-img"
+                  onerror="this.style.display='none'"
+                />
+                <div class="screenshot-placeholder">
+                  <div class="placeholder-nav">
+                    <div class="placeholder-nav-title"></div>
+                    <div class="placeholder-nav-icon"></div>
+                  </div>
+                  <div class="placeholder-row">
+                    <div class="pr-source"></div>
+                    <div class="pr-title"></div>
+                    <div class="pr-title pr-title-short"></div>
+                    <div class="pr-meta"></div>
+                  </div>
+                  <div class="placeholder-row">
+                    <div class="pr-source"></div>
+                    <div class="pr-title"></div>
+                    <div class="pr-title pr-title-short" style="width:80%"></div>
+                    <div class="pr-meta"></div>
+                  </div>
+                  <div class="placeholder-row">
+                    <div class="pr-source"></div>
+                    <div class="pr-title"></div>
+                    <div class="pr-title pr-title-short" style="width:65%"></div>
+                    <div class="pr-meta"></div>
+                  </div>
+                  <div class="placeholder-row">
+                    <div class="pr-source"></div>
+                    <div class="pr-title"></div>
+                    <div class="pr-title pr-title-short"></div>
+                    <div class="pr-meta"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="phone-home"></div>
+            </div>
+          </div>
+
+          <a href="https://apps.apple.com/app/id6770117291" class="cta-btn">
+            Download on the App Store
+          </a>
         </div>
+
         <div class="features">
-          <h2>Features</h2>
-          <ul class="feature-list">
-            <li>Subscribe to any RSS or Atom feed</li>
-            <li>Import subscriptions via OPML</li>
-            <li>Star articles to save for later</li>
-            <li>Open full articles in Safari</li>
-            <li>Share with the system share sheet</li>
-            <li>Navigate articles without leaving the reader</li>
-            <li>Mark articles read as you scroll</li>
-            <li>No account required</li>
-          </ul>
+          <div class="features-label">Features</div>
+          <div class="feature-grid">
+            <div class="feature-cell">
+              <div class="fc-label">RSS &amp; Atom</div>
+              <div class="fc-desc">Subscribe to any feed by URL</div>
+            </div>
+            <div class="feature-cell">
+              <div class="fc-label">Import OPML</div>
+              <div class="fc-desc">Bring your existing subscriptions</div>
+            </div>
+            <div class="feature-cell">
+              <div class="fc-label">Star articles</div>
+              <div class="fc-desc">Save anything to read later</div>
+            </div>
+            <div class="feature-cell">
+              <div class="fc-label">No account</div>
+              <div class="fc-desc">All data stays on your device</div>
+            </div>
+            <div class="feature-cell">
+              <div class="fc-label">Full articles</div>
+              <div class="fc-desc">Open in Safari with one tap</div>
+            </div>
+            <div class="feature-cell">
+              <div class="fc-label">Auto-read</div>
+              <div class="fc-desc">Articles mark read as you scroll</div>
+            </div>
+          </div>
         </div>
       </main>
+
       <footer>
         <span>© {new Date().getFullYear()} Eladio Caritos</span>
         <span>
-          <a href="/privacy">Privacy Policy</a>
+          <a href="/privacy">Privacy</a>
           &nbsp;·&nbsp;
           <a href="/support">Support</a>
         </span>
