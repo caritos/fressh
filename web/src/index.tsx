@@ -16,6 +16,7 @@ const css = `
 
   a { color: inherit; }
 
+  /* ---- NAV ---- */
   nav {
     display: flex;
     align-items: center;
@@ -26,10 +27,12 @@ const css = `
 
   nav .logo {
     font-size: 20px;
-    font-weight: 700;
+    font-weight: 800;
     letter-spacing: -0.5px;
     text-decoration: none;
   }
+
+  .logo-rss { color: #FF6200; }
 
   nav .nav-links {
     display: flex;
@@ -38,110 +41,206 @@ const css = `
   }
 
   nav .nav-links a {
-    font-size: 14px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
     text-decoration: none;
-    opacity: 0.6;
+    opacity: 0.4;
   }
 
   nav .nav-links a:hover { opacity: 1; }
 
+  /* ---- HERO ---- */
   .hero {
-    max-width: 680px;
+    max-width: 640px;
     margin: 0 auto;
-    padding: 100px 40px 80px;
+    padding: 64px 40px 56px;
     text-align: center;
+    border-bottom: 1px solid rgba(13,27,42,0.08);
   }
 
-  .hero .app-icon {
-    width: 96px;
-    height: 96px;
-    border-radius: 22px;
-    margin-bottom: 32px;
-    box-shadow: 0 4px 24px rgba(13,27,42,0.12);
+  .hero-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    opacity: 0.3;
+    margin-bottom: 24px;
   }
 
   .hero h1 {
     font-size: 52px;
-    font-weight: 700;
-    letter-spacing: -2px;
-    line-height: 1.1;
+    font-weight: 800;
+    letter-spacing: -2.5px;
+    line-height: 1.0;
     margin-bottom: 20px;
   }
 
   .hero p {
-    font-size: 20px;
-    opacity: 0.6;
-    max-width: 480px;
-    margin: 0 auto 40px;
+    font-size: 17px;
+    opacity: 0.45;
+    margin-bottom: 40px;
   }
 
-  .app-store-btn {
+  /* ---- PHONE MOCKUP ---- */
+  .phone-wrap {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 40px;
+  }
+
+  .phone {
+    width: 160px;
+    background: #fff;
+    border: 2px solid #0D1B2A;
+    border-radius: 28px;
+    padding: 10px 8px;
+  }
+
+  .phone-notch {
+    width: 36px;
+    height: 6px;
+    background: #0D1B2A;
+    border-radius: 4px;
+    margin: 0 auto 8px;
+    opacity: 0.15;
+  }
+
+  .phone-screen {
+    background: #F5F5F0;
+    border-radius: 12px;
+    overflow: hidden;
+    min-height: 280px;
+    position: relative;
+  }
+
+  .screenshot-img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    position: absolute;
+    top: 0; left: 0;
+    border-radius: 12px;
+  }
+
+  .screenshot-placeholder {
+    padding: 12px 10px;
+  }
+
+  .placeholder-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+
+  .placeholder-nav-title {
+    width: 56px; height: 8px;
+    background: #0D1B2A; border-radius: 2px; opacity: 0.6;
+  }
+
+  .placeholder-nav-icon {
+    width: 14px; height: 14px;
+    background: #0D1B2A; border-radius: 50%; opacity: 0.12;
+  }
+
+  .placeholder-row {
+    padding: 9px 0;
+    border-bottom: 1px solid rgba(13,27,42,0.07);
+  }
+
+  .placeholder-row:last-child { border-bottom: none; }
+
+  .pr-source { width: 44px; height: 5px; background: #0D1B2A; border-radius: 2px; opacity: 0.18; margin-bottom: 5px; }
+  .pr-title  { height: 7px; background: #0D1B2A; border-radius: 2px; opacity: 0.5; margin-bottom: 4px; }
+  .pr-title-short { width: 72%; }
+  .pr-meta   { width: 52px; height: 5px; background: #0D1B2A; border-radius: 2px; opacity: 0.15; }
+
+  .phone-home {
+    width: 32px; height: 4px;
+    background: #0D1B2A; border-radius: 3px;
+    margin: 8px auto 0; opacity: 0.12;
+  }
+
+  /* ---- CTA ---- */
+  .cta-btn {
     display: inline-block;
     background: #0D1B2A;
     color: #F5F5F0;
     text-decoration: none;
-    padding: 14px 28px;
-    border-radius: 12px;
-    font-size: 15px;
-    font-weight: 600;
-    letter-spacing: -0.2px;
+    padding: 14px 32px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    border-radius: 0;
     transition: opacity 0.15s;
   }
 
-  .app-store-btn:hover { opacity: 0.8; }
+  .cta-btn:hover { opacity: 0.75; }
 
+  /* ---- FEATURES ---- */
   .features {
-    max-width: 680px;
+    max-width: 640px;
     margin: 0 auto;
-    padding: 60px 40px;
-    border-top: 1px solid rgba(13,27,42,0.08);
+    border-bottom: 1px solid rgba(13,27,42,0.08);
   }
 
-  .features h2 {
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
+  .features-label {
+    padding: 24px 40px 0;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
     text-transform: uppercase;
-    opacity: 0.4;
-    margin-bottom: 32px;
+    opacity: 0.3;
   }
 
-  .feature-list {
-    list-style: none;
+  .feature-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 20px;
+    margin-top: 16px;
   }
 
-  .feature-list li {
-    font-size: 16px;
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
+  .feature-cell {
+    padding: 18px 24px;
+    border-right: 1px solid rgba(13,27,42,0.08);
+    border-bottom: 1px solid rgba(13,27,42,0.08);
   }
 
-  .feature-list li::before {
-    content: '·';
+  .feature-cell:nth-child(even) { border-right: none; }
+  .feature-cell:nth-last-child(-n+2) { border-bottom: none; }
+
+  .fc-label {
+    font-size: 13px;
     font-weight: 700;
-    opacity: 0.3;
-    flex-shrink: 0;
+    letter-spacing: -0.2px;
+    margin-bottom: 4px;
   }
 
+  .fc-desc {
+    font-size: 12px;
+    opacity: 0.45;
+    line-height: 1.5;
+  }
+
+  /* ---- FOOTER ---- */
   footer {
-    border-top: 1px solid rgba(13,27,42,0.08);
-    padding: 32px 40px;
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 28px 40px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     font-size: 13px;
     opacity: 0.4;
-    max-width: 680px;
-    margin: 0 auto;
   }
 
   footer a { text-decoration: none; }
   footer a:hover { opacity: 0.7; }
 
+  /* ---- INNER PAGES (/support, /privacy) ---- */
   .page {
     max-width: 640px;
     margin: 0 auto;
@@ -198,18 +297,20 @@ const css = `
     color: #F5F5F0;
     text-decoration: none;
     padding: 12px 24px;
-    border-radius: 10px;
     font-size: 14px;
     font-weight: 600;
   }
 
+  /* ---- RESPONSIVE ---- */
   @media (max-width: 600px) {
     nav { padding: 20px 24px; }
-    .hero { padding: 60px 24px 60px; }
-    .hero h1 { font-size: 36px; }
-    .hero p { font-size: 17px; }
-    .features { padding: 48px 24px; }
-    .feature-list { grid-template-columns: 1fr; }
+    .hero { padding: 48px 24px 48px; }
+    .hero h1 { font-size: 36px; letter-spacing: -1.5px; }
+    .hero p { font-size: 15px; }
+    .phone { width: 140px; }
+    .phone-screen { min-height: 240px; }
+    .features-label { padding: 20px 24px 0; }
+    .feature-cell { padding: 14px 16px; }
     footer { padding: 24px; flex-direction: column; gap: 12px; text-align: center; }
     .page { padding: 60px 24px; }
   }
@@ -225,7 +326,7 @@ const Layout = ({ title, children }: { title: string; children: any }) => (
     </head>
     <body>
       <nav>
-        <a href="/" class="logo">Fressh</a>
+        <a href="/" class="logo">F<span class="logo-rss">r</span>e<span class="logo-rss">ss</span>h</a>
         <ul class="nav-links">
           <li><a href="/support">Support</a></li>
           <li><a href="/privacy">Privacy</a></li>
