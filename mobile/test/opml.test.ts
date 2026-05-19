@@ -57,6 +57,22 @@ describe('parseOpml', () => {
   test('throws on invalid XML', () => {
     expect(() => parseOpml('not xml at all <unclosed')).toThrow();
   });
+
+  test('parses single-outline OPML body (isArray edge case)', () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+  <head><title>Single</title></head>
+  <body>
+    <outline type="rss" text="Only Feed" title="Only Feed"
+      xmlUrl="https://single.com/feed.xml" htmlUrl="https://single.com"/>
+  </body>
+</opml>`;
+    const feeds = parseOpml(xml);
+    expect(feeds).toHaveLength(1);
+    expect(feeds[0].url).toBe('https://single.com/feed.xml');
+    expect(feeds[0].title).toBe('Only Feed');
+    expect(feeds[0].siteUrl).toBe('https://single.com');
+  });
 });
 
 describe('buildOpml', () => {
@@ -74,11 +90,22 @@ describe('buildOpml', () => {
 
   test('escapes special characters in titles and URLs', () => {
     const xml = buildOpml([
-      { url: 'https://a.com/feed?x=1&y=2', title: 'A & B <feed>', site_url: null },
+      { url: 'https://a.com/feed?x=1&y=2', title: 'A & B <feed> end>', site_url: null },
     ]);
     expect(xml).toContain('&amp;');
     expect(xml).toContain('&lt;');
+    expect(xml).toContain('&gt;');
     expect(xml).not.toContain('A & B');
+  });
+
+  test('escapes double-quotes in titles and URLs (XML attribute safety)', () => {
+    const xml = buildOpml([
+      { url: 'https://a.com/feed?q="hello"', title: 'Feed "quoted" title', site_url: 'https://a.com/"section"' },
+    ]);
+    expect(xml).toContain('&quot;');
+    expect(xml).not.toContain('"hello"');
+    expect(xml).not.toContain('"quoted"');
+    expect(xml).not.toContain('"section"');
   });
 
   test('round-trips through parseOpml', () => {
@@ -91,6 +118,8 @@ describe('buildOpml', () => {
     expect(parsed).toHaveLength(2);
     expect(parsed[0].url).toBe('https://a.com/feed');
     expect(parsed[0].title).toBe('Alpha');
+    expect(parsed[0].siteUrl).toBe('https://a.com');
     expect(parsed[1].url).toBe('https://b.com/rss');
+    expect(parsed[1].siteUrl).toBeUndefined();
   });
 });
