@@ -19,7 +19,6 @@ import { detectFeedType } from '../../src/fetcher/detect';
 import { resolveYouTubeChannelId, fetchFeed } from '../../src/fetcher/fetch';
 import { parseFeed } from '../../src/fetcher/parser';
 import { refresh } from '../../src/fetcher/refresh';
-import { importBundledSubscriptions, BUNDLED_FEED_COUNT } from '../../src/fetcher/opml';
 import { FONTS, COLORS } from '../../src/constants';
 import Row from '../../src/components/ui/Row';
 import SectionHeader from '../../src/components/ui/SectionHeader';
@@ -37,7 +36,6 @@ export default function FeedsScreen() {
   const [addVisible, setAddVisible] = useState(false);
   const [addUrl, setAddUrl] = useState('');
   const [addLoading, setAddLoading] = useState(false);
-  const [importing, setImporting] = useState(false);
   const [smartCounts, setSmartCounts] = useState<{ starred: number; unread: number; today: number }>({
     starred: 0,
     unread: 0,
@@ -190,32 +188,6 @@ export default function FeedsScreen() {
     }
   };
 
-  const onImportSubscriptions = () => {
-    Alert.alert(
-      'Import Subscriptions',
-      `Import ${BUNDLED_FEED_COUNT} feeds from your TUI subscription list? Feeds already added will be skipped.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Import',
-          onPress: async () => {
-            setImporting(true);
-            setAddVisible(false);
-            try {
-              const inserted = await importBundledSubscriptions();
-              await loadFeeds();
-              Alert.alert('Done', `Imported ${inserted} new feeds.`);
-            } catch {
-              Alert.alert('Error', 'Import failed. Please try again.');
-            } finally {
-              setImporting(false);
-            }
-          },
-        },
-      ]
-    );
-  };
-
   const getSmartCount = (id: string): number => {
     if (id === 'starred') return smartCounts.starred;
     if (id === 'unread') return smartCounts.unread;
@@ -234,9 +206,14 @@ export default function FeedsScreen() {
         options={{
           title: 'FRESSH',
           headerRight: () => (
-            <TouchableOpacity style={styles.headerBtn} onPress={() => setAddVisible(true)}>
-              <Text style={styles.headerBtnText}>+</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <TouchableOpacity style={styles.headerBtn} onPress={() => router.push('/settings')}>
+                <Text style={styles.headerGearText}>⚙</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.headerBtn} onPress={() => setAddVisible(true)}>
+                <Text style={styles.headerBtnText}>+</Text>
+              </TouchableOpacity>
+            </View>
           ),
         }}
       />
@@ -316,20 +293,9 @@ export default function FeedsScreen() {
                 : <Text style={styles.confirmBtnText}>Add</Text>}
             </TouchableOpacity>
           </View>
-          <TouchableOpacity style={styles.importLink} onPress={onImportSubscriptions}>
-            <Text style={styles.importLinkText}>
-              Import all {BUNDLED_FEED_COUNT} subscriptions from TUI
-            </Text>
-          </TouchableOpacity>
         </View>
       </Modal>
 
-      {importing && (
-        <View style={styles.importingOverlay}>
-          <ActivityIndicator color={COLORS.accent} size="large" />
-          <Text style={styles.importingText}>Importing subscriptions…</Text>
-        </View>
-      )}
     </View>
   );
 }
@@ -343,6 +309,11 @@ const styles = StyleSheet.create({
     fontWeight: '300',
     color: COLORS.accent,
     lineHeight: 30,
+  },
+  headerGearText: {
+    fontSize: 18,
+    color: COLORS.textSecondary,
+    lineHeight: 24,
   },
   deleteAction: {
     backgroundColor: '#C0392B',
@@ -376,14 +347,4 @@ const styles = StyleSheet.create({
   cancelBtnText: { fontFamily: FONTS.sansMedium, fontSize: 14, color: COLORS.text },
   confirmBtn: { backgroundColor: COLORS.accent },
   confirmBtnText: { fontFamily: FONTS.sansBold, fontSize: 14, color: '#fff' },
-  importLink: { marginTop: 24, alignItems: 'center' },
-  importLinkText: { fontFamily: FONTS.sans, fontSize: 13, color: COLORS.textSecondary },
-  importingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(245,245,240,0.85)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 16,
-  },
-  importingText: { fontFamily: FONTS.sansMedium, fontSize: 15, color: COLORS.text },
 });
