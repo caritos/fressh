@@ -19,6 +19,6 @@ rsync -avz --delete \
 
 sshpass -p "$password" ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no \
   "$REMOTE_USER@$REMOTE_HOST" \
-  "cd $REMOTE_DIR && ~/.bun/bin/bun install --production && systemctl --user restart fressh"
+  "loginctl enable-linger && cd $REMOTE_DIR && ~/.bun/bin/bun install --production && systemctl --user restart fressh"
 
 echo "✓ Done — https://fressh.caritos.com"
