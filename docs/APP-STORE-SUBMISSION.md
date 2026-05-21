@@ -23,7 +23,7 @@ News
 
 **Secondary Category**
 ```
-Utilities
+Productivity
 ```
 
 ---
@@ -175,7 +175,7 @@ Answer **No** to all questions → **4+** rating.
 ## Checklist
 
 - [ ] Subtitle filled in
-- [ ] Category set (News / Utilities)
+- [ ] Category set (News / Productivity)
 - [ ] Promotional text pasted
 - [ ] Description pasted
 - [ ] Keywords pasted
