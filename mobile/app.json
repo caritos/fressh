@@ -19,8 +19,12 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.caritos.fressh",
       "entitlements": {
-        "com.apple.developer.icloud-container-identifiers": ["iCloud.com.caritos.fressh"],
-        "com.apple.developer.icloud-services": ["CloudDocuments"]
+        "com.apple.developer.icloud-container-identifiers": [
+          "iCloud.com.caritos.fressh"
+        ],
+        "com.apple.developer.icloud-services": [
+          "CloudDocuments"
+        ]
       },
       "infoPlist": {
         "UIBackgroundModes": [
@@ -28,6 +32,9 @@
           "remote-notification"
         ],
         "ITSAppUsesNonExemptEncryption": false,
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        },
         "NSUbiquitousContainers": {
           "iCloud.com.caritos.fressh": {
             "NSUbiquitousContainerIsDocumentScopePublic": true,
@@ -51,7 +58,8 @@
         {
           "sounds": []
         }
-      ]
+      ],
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true

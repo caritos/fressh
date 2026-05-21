@@ -9,29 +9,36 @@ export async function fetchFeed(
   url: string,
   opts: { lastModified?: string | null; etag?: string | null } = {}
 ): Promise<FetchResult> {
-  try {
-    const headers: Record<string, string> = {
-      'User-Agent': UA,
-      Accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml, */*',
-    };
-    if (opts.lastModified) headers['If-Modified-Since'] = opts.lastModified;
-    if (opts.etag) headers['If-None-Match'] = opts.etag;
+  const httpsUrl = url.startsWith('http://') ? url.replace('http://', 'https://') : null;
+  const urlsToTry = httpsUrl ? [httpsUrl, url] : [url];
 
-    const res = await fetch(url, { headers });
+  let lastError = 'unknown error';
+  for (const candidate of urlsToTry) {
+    try {
+      const headers: Record<string, string> = {
+        'User-Agent': UA,
+        Accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml, */*',
+      };
+      if (opts.lastModified) headers['If-Modified-Since'] = opts.lastModified;
+      if (opts.etag) headers['If-None-Match'] = opts.etag;
 
-    if (res.status === 304) return { status: 'not-modified' };
-    if (!res.ok) return { status: 'error', message: `HTTP ${res.status}` };
+      const res = await fetch(candidate, { headers });
 
-    const text = await res.text();
-    return {
-      status: 'ok',
-      text,
-      lastModified: res.headers.get('last-modified'),
-      etag: res.headers.get('etag'),
-    };
-  } catch (e) {
-    return { status: 'error', message: e instanceof Error ? e.message : String(e) };
+      if (res.status === 304) return { status: 'not-modified' };
+      if (!res.ok) { lastError = `HTTP ${res.status}`; continue; }
+
+      const text = await res.text();
+      return {
+        status: 'ok',
+        text,
+        lastModified: res.headers.get('last-modified'),
+        etag: res.headers.get('etag'),
+      };
+    } catch (e) {
+      lastError = e instanceof Error ? e.message : String(e);
+    }
   }
+  return { status: 'error', message: lastError };
 }
 
 export async function resolveYouTubeChannelId(channelUrl: string): Promise<string | null> {

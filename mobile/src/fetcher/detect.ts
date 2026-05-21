@@ -4,7 +4,8 @@ export type DetectResult =
   | { type: 'youtube'; originalUrl: string };
 
 export function detectFeedType(input: string): DetectResult {
-  const url = input.trim();
+  let url = input.trim();
+  if (url && !/^https?:\/\//i.test(url)) url = `https://${url}`;
 
   // Already a YouTube RSS feed — pass through
   if (url.includes('youtube.com/feeds/videos.xml')) {
