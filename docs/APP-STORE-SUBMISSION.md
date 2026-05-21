@@ -23,7 +23,7 @@ News
 
 **Secondary Category**
 ```
-Productivity
+Utilities
 ```
 
 ---
@@ -55,9 +55,9 @@ DESIGNED FOR READING
 
 Fressh uses a clean typographic layout built around legibility. No sidebars, no clutter, no dark patterns. Just headlines, summaries, and your feeds.
 
-STAY IN SYNC
+YOUR DATA, YOUR WAY
 
-Fressh can point to a custom SQLite database path, making it easy to sync your read state and subscriptions with other tools — including the Fressh terminal app for power users.
+All data stays on your device. Export your subscriptions as an OPML file to back them up or move to another reader anytime. No account required, ever.
 ```
 
 ### Keywords _(100 chars max, comma-separated)_
@@ -127,7 +127,7 @@ No account or login is required. All data is stored locally on device.
 
 **Price**
 ```
-Free
+$0.99
 ```
 
 **Availability**
@@ -175,7 +175,7 @@ Answer **No** to all questions → **4+** rating.
 ## Checklist
 
 - [ ] Subtitle filled in
-- [ ] Category set (News / Productivity)
+- [ ] Category set (News / Utilities)
 - [ ] Promotional text pasted
 - [ ] Description pasted
 - [ ] Keywords pasted
