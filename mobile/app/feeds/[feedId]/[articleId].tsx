@@ -101,7 +101,7 @@ export default function ArticleReaderScreen() {
   const onShare = async () => {
     if (!article.url) return;
     try {
-      await Share.share({ url: article.url, message: article.title ?? '' });
+      await Share.share({ message: `${article.title ?? ''}\n${article.url}` });
     } catch (e) {
       console.error('share error:', e);
     }

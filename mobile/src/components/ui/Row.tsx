@@ -1,4 +1,5 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useState } from 'react';
+import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { FONTS, COLORS } from '../../constants';
 import Badge from './Badge';
 
@@ -7,12 +8,22 @@ type Props = {
   meta?: string;
   badge?: number;
   dimmed?: boolean;
+  icon?: string;
   onPress: () => void;
 };
 
-export default function Row({ label, meta, badge, dimmed, onPress }: Props) {
+export default function Row({ label, meta, badge, dimmed, icon, onPress }: Props) {
+  const [iconFailed, setIconFailed] = useState(false);
+
   return (
     <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
+      {icon && !iconFailed && (
+        <Image
+          source={{ uri: icon }}
+          style={styles.icon}
+          onError={() => setIconFailed(true)}
+        />
+      )}
       <View style={styles.content}>
         <Text
           style={[styles.label, dimmed && styles.labelDimmed]}
@@ -39,6 +50,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: COLORS.border,
     backgroundColor: COLORS.background,
+  },
+  icon: {
+    width: 18,
+    height: 18,
+    borderRadius: 3,
+    marginRight: 10,
   },
   content: { flex: 1, marginRight: 8 },
   label: {

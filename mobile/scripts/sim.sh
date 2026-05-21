@@ -109,7 +109,21 @@ fi
 bundle_id=$(node -e "console.log(require('./app.json').expo.ios.bundleIdentifier)")
 
 echo ""
-echo "Deploying to: $label ($udid)"
+echo "Build configuration:"
+echo ""
+echo "  1) Debug   — dev build with Metro (default)"
+echo "  2) Release — production build for screenshots (no dev overlay)"
+echo ""
+read "config_choice?Choice [1-2, default 1]: "
+
+if [[ "$config_choice" == "2" ]]; then
+  config="Release"
+else
+  config="Debug"
+fi
+
+echo ""
+echo "Deploying to: $label ($udid) [$config]"
 echo ""
 
 # Remove stale install
@@ -119,9 +133,11 @@ xcrun simctl uninstall "$udid" "$bundle_id" 2>/dev/null || true
 workspace=$(find ios -name "*.xcworkspace" -maxdepth 1 | head -1)
 scheme=$(basename "$workspace" .xcworkspace)
 
+config_lower=$(echo "$config" | tr '[:upper:]' '[:lower:]')
+
 # Clean build if DerivedData is missing or Podfile.lock changed
-derived_app=$(find ~/Library/Developer/Xcode/DerivedData -name "${scheme}.app" -path "*/Debug-iphonesimulator/*" 2>/dev/null | head -1)
-build_args=(-workspace "$workspace" -configuration Debug -scheme "$scheme" -destination "id=$udid")
+derived_app=$(find ~/Library/Developer/Xcode/DerivedData -name "${scheme}.app" -path "*/${config}-iphonesimulator/*" 2>/dev/null | head -1)
+build_args=(-workspace "$workspace" -configuration "$config" -scheme "$scheme" -destination "id=$udid")
 if [[ -z "$derived_app" || ios/Podfile.lock -nt "$derived_app" ]]; then
   echo "Native dependencies changed — clearing DerivedData..."
   rm -rf ~/Library/Developer/Xcode/DerivedData/${scheme}-*(N)
@@ -141,7 +157,7 @@ else
 fi
 
 # Install built app onto the chosen simulator
-built_app=$(find ~/Library/Developer/Xcode/DerivedData -name "${scheme}.app" -path "*/Debug-iphonesimulator/*" 2>/dev/null | head -1)
+built_app=$(find ~/Library/Developer/Xcode/DerivedData -name "${scheme}.app" -path "*/${config}-iphonesimulator/*" 2>/dev/null | head -1)
 if [[ -z "$built_app" ]]; then
   echo "No .app found after build."
   exit 1
@@ -149,15 +165,22 @@ fi
 echo "Installing on $label..."
 xcrun simctl install "$udid" "$built_app"
 
-# Kill any stale Metro on port 8081
-lsof -ti tcp:8081 | xargs kill -9 2>/dev/null || true
+if [[ "$config" == "Release" ]]; then
+  # Release: launch directly — no Metro needed, JS is bundled into the app
+  xcrun simctl launch "$udid" "$bundle_id"
+  echo ""
+  echo "App launched in Release mode. No dev overlay — ready for screenshots."
+else
+  # Debug: open via dev-client URL once Metro is ready
+  # Kill any stale Metro on port 8081
+  lsof -ti tcp:8081 | xargs kill -9 2>/dev/null || true
 
-# Open the app once Metro is ready
-(
-  until curl -sf http://localhost:8081/status > /dev/null 2>&1; do sleep 1; done
-  echo "Opening on $label..."
-  xcrun simctl openurl "$udid" "${bundle_id}://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
-) &
+  (
+    until curl -sf http://localhost:8081/status > /dev/null 2>&1; do sleep 1; done
+    echo "Opening on $label..."
+    xcrun simctl openurl "$udid" "${bundle_id}://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+  ) &
 
-# Start Metro in the foreground (Ctrl+C to stop)
-npx expo start --dev-client
+  # Start Metro in the foreground (Ctrl+C to stop)
+  npx expo start --dev-client
+fi

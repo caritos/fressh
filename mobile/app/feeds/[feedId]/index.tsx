@@ -135,7 +135,7 @@ export default function ArticleListScreen() {
       <TouchableOpacity
         style={[styles.swipeAction, { backgroundColor: '#555555' }]}
         onPress={async () => {
-          if (article.url) await Share.share({ url: article.url, message: article.title ?? '' });
+          if (article.url) await Share.share({ message: `${article.title ?? ''}\n${article.url}` });
         }}
       >
         <Text style={styles.swipeActionText}>Share</Text>
@@ -165,6 +165,9 @@ export default function ArticleListScreen() {
 
   const renderItem = useCallback(({ item }: { item: ArticleRow }) => {
     const label = item.starred ? `★ ${item.title ?? 'Untitled'}` : (item.title ?? 'Untitled');
+    const faviconUrl = typeof feedId === 'string' && item.feed_site_url
+      ? (() => { try { const { hostname } = new URL(item.feed_site_url!); return `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`; } catch { return undefined; } })()
+      : undefined;
     return (
       <Swipeable
         renderRightActions={() => renderRightActions(item)}
@@ -174,6 +177,7 @@ export default function ArticleListScreen() {
           label={label}
           meta={formatRelative(item.published_at)}
           dimmed={!!item.read}
+          icon={faviconUrl}
           onPress={() => onTap(item)}
         />
       </Swipeable>
@@ -185,13 +189,21 @@ export default function ArticleListScreen() {
       <Stack.Screen
         options={{
           title: feedTitle,
-          headerRight: (typeof feedId === 'number' || feedId === 'unread')
-            ? () => (
-                <TouchableOpacity onPress={onMarkAllRead} style={{ marginRight: 4 }}>
-                  <Text style={styles.markAllRead}>Mark All Read</Text>
-                </TouchableOpacity>
-              )
-            : undefined,
+          headerRight: () => (
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 4 }}>
+              {(typeof feedId === 'number' || feedId === 'unread') && (
+                <>
+                  <TouchableOpacity onPress={onMarkAllRead} style={styles.headerBtn}>
+                    <Text style={styles.markAllRead}>Mark All Read</Text>
+                  </TouchableOpacity>
+                  <View style={styles.headerBtnDivider} />
+                </>
+              )}
+              <TouchableOpacity onPress={onRefresh} disabled={refreshing} style={styles.headerBtn}>
+                <Text style={styles.refreshBtn}>↻</Text>
+              </TouchableOpacity>
+            </View>
+          ),
         }}
       />
       <FlatList
@@ -211,10 +223,24 @@ export default function ArticleListScreen() {
 }
 
 const styles = StyleSheet.create({
+  headerBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  headerBtnDivider: {
+    width: StyleSheet.hairlineWidth,
+    height: 16,
+    backgroundColor: COLORS.border,
+  },
   markAllRead: {
     fontFamily: FONTS.sansMedium,
     fontSize: 13,
     color: COLORS.accent,
+  },
+  refreshBtn: {
+    fontSize: 20,
+    color: COLORS.accent,
+    lineHeight: 24,
   },
   swipeAction: {
     justifyContent: 'center',

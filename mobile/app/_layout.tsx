@@ -10,18 +10,16 @@ import * as SplashScreen from 'expo-splash-screen';
 import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { initDb, getDb } from '../src/db/database';
-import { loadDbConfig } from '../src/db/config';
-import { registerSetupCompleteCallback } from '../src/db/setup-complete';
+import { loadDbConfig, saveDbConfig, appStoragePath } from '../src/db/config';
 import { registerBackgroundFetch } from '../src/tasks/background';
 import { refresh } from '../src/fetcher/refresh';
 import { COLORS, FONTS } from '../src/constants';
-import SetupScreen from './setup';
 
 SplashScreen.preventAutoHideAsync();
 
 const FOREGROUND_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
 
-type AppPhase = 'loading' | 'setup' | 'ready';
+type AppPhase = 'loading' | 'ready';
 
 export default function RootLayout() {
   const lastFetchAt = useRef<number | null>(null);
@@ -47,18 +45,13 @@ export default function RootLayout() {
   useEffect(() => {
     if (!fontsLoaded && !fontError) return;
 
-    registerSetupCompleteCallback(async () => {
-      const config = await loadDbConfig();
-      if (config) await startApp(config.databasePath);
-    });
-
     async function init() {
       try {
-        const config = await loadDbConfig();
+        let config = await loadDbConfig();
         if (!config) {
-          setAppPhase('setup');
-          await SplashScreen.hideAsync();
-          return;
+          const dbPath = appStoragePath();
+          config = { databasePath: dbPath };
+          await saveDbConfig(config);
         }
         // Guard against fast refresh wiping the module-level _db while
         // appPhase is already 'ready' — re-init silently if needed.
@@ -89,7 +82,6 @@ export default function RootLayout() {
 
   if (!fontsLoaded && !fontError) return null;
   if (appPhase === 'loading') return null;
-  if (appPhase === 'setup') return <SetupScreen />;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -99,6 +91,8 @@ export default function RootLayout() {
           headerTintColor: COLORS.text,
           headerTitleStyle: { fontFamily: FONTS.sansBold, fontSize: 14 },
           contentStyle: { backgroundColor: COLORS.background },
+          headerBackTitle: '',
+          headerBackButtonDisplayMode: 'minimal',
         }}
       >
         <Stack.Screen name="feeds/index" options={{ title: 'FRESSH' }} />

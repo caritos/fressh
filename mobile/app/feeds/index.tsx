@@ -33,6 +33,7 @@ export default function FeedsScreen() {
   const router = useRouter();
   const [feeds, setFeeds] = useState<FeedRow[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshProgress, setRefreshProgress] = useState<{ done: number; total: number } | null>(null);
   const [addVisible, setAddVisible] = useState(false);
   const [addUrl, setAddUrl] = useState('');
   const [addLoading, setAddLoading] = useState(false);
@@ -72,8 +73,11 @@ export default function FeedsScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
+    setRefreshProgress(null);
     try {
-      const summary = await refresh();
+      const summary = await refresh((done, total) => {
+        setRefreshProgress({ done, total });
+      });
       await loadFeeds();
       if (summary.newArticles > 0) {
         Alert.alert('Refreshed', `${summary.newArticles} new article${summary.newArticles === 1 ? '' : 's'}.`);
@@ -82,6 +86,7 @@ export default function FeedsScreen() {
       Alert.alert('Refresh failed', 'Check your connection and try again.');
     } finally {
       setRefreshing(false);
+      setRefreshProgress(null);
     }
   };
 
@@ -204,12 +209,21 @@ export default function FeedsScreen() {
     <View style={styles.container}>
       <Stack.Screen
         options={{
-          title: 'FRESSH',
+          headerTitle: () => (
+            <Text style={styles.headerTitle}>
+              {'F'}<Text style={styles.headerTitleAccent}>R</Text>{'E'}<Text style={styles.headerTitleAccent}>SS</Text>{'H'}
+            </Text>
+          ),
           headerRight: () => (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <TouchableOpacity style={styles.headerBtn} onPress={() => router.push('/settings')}>
                 <Text style={styles.headerGearText}>⚙</Text>
               </TouchableOpacity>
+              <View style={styles.headerBtnDivider} />
+              <TouchableOpacity style={styles.headerBtn} onPress={onRefresh} disabled={refreshing}>
+                <Text style={styles.headerRefreshText}>↻</Text>
+              </TouchableOpacity>
+              <View style={styles.headerBtnDivider} />
               <TouchableOpacity style={styles.headerBtn} onPress={() => setAddVisible(true)}>
                 <Text style={styles.headerBtnText}>+</Text>
               </TouchableOpacity>
@@ -217,6 +231,12 @@ export default function FeedsScreen() {
           ),
         }}
       />
+
+      {refreshProgress && refreshProgress.total > 0 && (
+        <View style={styles.progressBar}>
+          <View style={[styles.progressFill, { width: `${(refreshProgress.done / refreshProgress.total) * 100}%` as any }]} />
+        </View>
+      )}
 
       <SectionList
         sections={sections}
@@ -237,6 +257,12 @@ export default function FeedsScreen() {
             );
           }
           const feed = item as FeedRow & { isSmart: false };
+          const faviconUrl = (() => {
+            try {
+              const { hostname } = new URL(feed.site_url ?? feed.url);
+              return `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`;
+            } catch { return undefined; }
+          })();
           return (
             <Swipeable
               renderRightActions={() => (
@@ -251,6 +277,7 @@ export default function FeedsScreen() {
               <Row
                 label={feed.title ?? feed.url}
                 badge={feed.unread_count}
+                icon={faviconUrl}
                 onPress={() => router.push(`/feeds/${feed.id}`)}
               />
             </Swipeable>
@@ -302,7 +329,26 @@ export default function FeedsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
+  headerTitle: {
+    fontFamily: FONTS.sansBold,
+    fontSize: 14,
+    color: COLORS.text,
+    letterSpacing: 1,
+  },
+  headerTitleAccent: {
+    color: COLORS.accent,
+  },
   headerBtn: { paddingHorizontal: 8, paddingVertical: 4 },
+  headerBtnDivider: {
+    width: StyleSheet.hairlineWidth,
+    height: 16,
+    backgroundColor: COLORS.border,
+  },
+  headerRefreshText: {
+    fontSize: 20,
+    color: COLORS.accent,
+    lineHeight: 24,
+  },
   headerBtnText: {
     fontSize: 26,
     fontFamily: FONTS.sans,
@@ -314,6 +360,14 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: COLORS.textSecondary,
     lineHeight: 24,
+  },
+  progressBar: {
+    height: 2,
+    backgroundColor: COLORS.border,
+  },
+  progressFill: {
+    height: 2,
+    backgroundColor: COLORS.accent,
   },
   deleteAction: {
     backgroundColor: '#C0392B',

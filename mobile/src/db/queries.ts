@@ -29,6 +29,7 @@ export interface ArticleRow {
   read: number;
   starred: number;
   feed_title: string | null;
+  feed_site_url: string | null;
 }
 
 const FEEDS_WITH_UNREAD = `
@@ -41,7 +42,7 @@ const FEEDS_WITH_UNREAD = `
 `;
 
 const ARTICLES_BY_FEED = `
-  SELECT a.*, f.title as feed_title
+  SELECT a.*, f.title as feed_title, f.site_url as feed_site_url
   FROM articles a
   JOIN feeds f ON a.feed_id = f.id
   WHERE a.feed_id = ?
@@ -49,7 +50,7 @@ const ARTICLES_BY_FEED = `
 `;
 
 const ARTICLES_UNREAD = `
-  SELECT a.*, f.title as feed_title
+  SELECT a.*, f.title as feed_title, f.site_url as feed_site_url
   FROM articles a
   JOIN feeds f ON a.feed_id = f.id
   WHERE a.read = 0
@@ -57,7 +58,7 @@ const ARTICLES_UNREAD = `
 `;
 
 const ARTICLES_STARRED = `
-  SELECT a.*, f.title as feed_title
+  SELECT a.*, f.title as feed_title, f.site_url as feed_site_url
   FROM articles a
   JOIN feeds f ON a.feed_id = f.id
   WHERE a.starred = 1
@@ -65,7 +66,7 @@ const ARTICLES_STARRED = `
 `;
 
 const ARTICLES_TODAY = `
-  SELECT a.*, f.title as feed_title
+  SELECT a.*, f.title as feed_title, f.site_url as feed_site_url
   FROM articles a
   JOIN feeds f ON a.feed_id = f.id
   WHERE date(a.published_at) = date('now')

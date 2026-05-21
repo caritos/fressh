@@ -450,12 +450,13 @@ app.get('/support', (c) =>
 
         <h2>Frequently Asked Questions</h2>
         <ul>
-          <li>How do I add a feed? — Tap the + button and paste any RSS or Atom feed URL.</li>
-          <li>How do I import from another reader? — Tap + and choose Import OPML, then select your .opml file.</li>
-          <li>How do I star an article? — Open the article and tap the star icon in the top right.</li>
+          <li>How do I add a feed? — Tap the + button and paste any RSS, YouTube, or Reddit URL.</li>
+          <li>How do I import feeds from another reader? — Go to Settings → Import OPML and select your .opml file.</li>
+          <li>How do I export my subscriptions? — Go to Settings → Export OPML to share your feed list as a file.</li>
+          <li>How do I star an article? — Swipe right on any article and tap Star, or open it and tap the star icon.</li>
+          <li>How do I mark articles as read? — Swipe right on any article and tap Read. Tap Mark All Read in the top right to clear everything at once.</li>
           <li>Can I read the full article? — Yes, tap the link icon to open it in Safari.</li>
           <li>Does Fressh require an account? — No. All your data stays on your device.</li>
-          <li>How do I sync with the Fressh terminal app? — On first launch, choose Custom Path and point to a shared SQLite database.</li>
         </ul>
 
         <h2>Contact</h2>

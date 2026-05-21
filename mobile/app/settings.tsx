@@ -8,6 +8,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Stack } from 'expo-router';
+import { Linking } from 'react-native';
+import Constants from 'expo-constants';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -147,6 +149,55 @@ export default function SettingsScreen() {
           </Text>
         </View>
       )}
+
+      <Text style={styles.sectionLabel}>About</Text>
+
+      <View style={styles.section}>
+        <View style={styles.row}>
+          <View style={styles.rowContent}>
+            <Text style={styles.rowTitle}>Fressh</Text>
+            <Text style={styles.rowSubtitle}>Clean RSS reader for iPhone</Text>
+          </View>
+          <Text style={styles.rowVersion}>
+            v{Constants.expoConfig?.version ?? '1.0.0'}
+          </Text>
+        </View>
+
+        <View style={styles.divider} />
+
+        <View style={styles.row}>
+          <View style={styles.rowContent}>
+            <Text style={styles.rowTitle}>Developer</Text>
+            <Text style={styles.rowSubtitle}>Eladio Caritos</Text>
+          </View>
+        </View>
+
+        <View style={styles.divider} />
+
+        <TouchableOpacity
+          style={styles.row}
+          onPress={() => Linking.openURL('https://fressh.caritos.com/support')}
+          activeOpacity={0.6}
+        >
+          <View style={styles.rowContent}>
+            <Text style={styles.rowTitle}>Support</Text>
+          </View>
+          <Text style={styles.chevron}>›</Text>
+        </TouchableOpacity>
+
+        <View style={styles.divider} />
+
+        <TouchableOpacity
+          style={styles.row}
+          onPress={() => Linking.openURL('https://fressh.caritos.com/privacy')}
+          activeOpacity={0.6}
+        >
+          <View style={styles.rowContent}>
+            <Text style={styles.rowTitle}>Privacy Policy</Text>
+          </View>
+          <Text style={styles.chevron}>›</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -191,6 +242,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.textSecondary,
     marginTop: 2,
+  },
+  rowVersion: {
+    fontFamily: FONTS.mono,
+    fontSize: 12,
+    color: COLORS.textDimmed,
   },
   chevron: {
     fontFamily: FONTS.sans,

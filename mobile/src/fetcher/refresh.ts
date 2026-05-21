@@ -14,9 +14,11 @@ export interface RefreshSummary {
   newArticles: number;
 }
 
-const MAX_CONCURRENT = 3;
+const MAX_CONCURRENT = 6;
 
-export async function refresh(): Promise<RefreshSummary> {
+export async function refresh(
+  onProgress?: (completed: number, total: number) => void
+): Promise<RefreshSummary> {
   const db = getDb();
   const feeds = await getFeeds(db);
   const enabled = feeds.filter((f) => f.enabled === 1);
@@ -24,8 +26,10 @@ export async function refresh(): Promise<RefreshSummary> {
   let fetched = 0;
   let failed = 0;
   let newArticles = 0;
+  let completed = 0;
 
-  // Process feeds in batches of MAX_CONCURRENT
+  onProgress?.(0, enabled.length);
+
   for (let i = 0; i < enabled.length; i += MAX_CONCURRENT) {
     const batch = enabled.slice(i, i + MAX_CONCURRENT);
     await Promise.all(
@@ -38,34 +42,29 @@ export async function refresh(): Promise<RefreshSummary> {
 
           if (result.status === 'not-modified') {
             fetched++;
-            return;
-          }
-          if (result.status === 'error') {
+          } else if (result.status === 'error') {
             failed++;
-            return;
+          } else {
+            const parsed = await parseFeed(result.text);
+            if (!parsed) {
+              failed++;
+            } else {
+              await upsertFeed(db, {
+                url: feed.url,
+                title: parsed.title ?? feed.title,
+                site_url: parsed.siteUrl ?? feed.site_url,
+              });
+              const count = await insertArticles(db, feed.id, parsed.articles);
+              await updateFeedFetchMeta(db, feed.id, result.lastModified, result.etag);
+              newArticles += count;
+              fetched++;
+            }
           }
-
-          const parsed = await parseFeed(result.text);
-          if (!parsed) {
-            failed++;
-            return;
-          }
-
-          // Ensure feed metadata is up to date
-          await upsertFeed(db, {
-            url: feed.url,
-            title: parsed.title ?? feed.title,
-            site_url: parsed.siteUrl ?? feed.site_url,
-          });
-
-          const count = await insertArticles(db, feed.id, parsed.articles);
-          await updateFeedFetchMeta(db, feed.id, result.lastModified, result.etag);
-
-          newArticles += count;
-          fetched++;
         } catch (e) {
           console.error(`refresh: error on ${feed.url}:`, e);
           failed++;
+        } finally {
+          onProgress?.(++completed, enabled.length);
         }
       })
     );

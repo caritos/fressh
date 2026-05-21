@@ -14,6 +14,8 @@ export async function fetchFeed(
 
   let lastError = 'unknown error';
   for (const candidate of urlsToTry) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
     try {
       const headers: Record<string, string> = {
         'User-Agent': UA,
@@ -22,7 +24,7 @@ export async function fetchFeed(
       if (opts.lastModified) headers['If-Modified-Since'] = opts.lastModified;
       if (opts.etag) headers['If-None-Match'] = opts.etag;
 
-      const res = await fetch(candidate, { headers });
+      const res = await fetch(candidate, { headers, signal: controller.signal });
 
       if (res.status === 304) return { status: 'not-modified' };
       if (!res.ok) { lastError = `HTTP ${res.status}`; continue; }
@@ -36,6 +38,8 @@ export async function fetchFeed(
       };
     } catch (e) {
       lastError = e instanceof Error ? e.message : String(e);
+    } finally {
+      clearTimeout(timeout);
     }
   }
   return { status: 'error', message: lastError };
