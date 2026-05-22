@@ -82,6 +82,58 @@ https://fressh.caritos.com/privacy
 
 ---
 
+## Guideline 2.1 Resubmission (review rejection 2026-05-21)
+
+Apple requested additional information before continuing the review. All items below must be completed before resubmitting. See also: [GitHub issue #6](https://github.com/caritos/fressh/issues/6)
+
+### Checklist
+
+- [ ] **Screen recording on a physical iPhone** (not Simulator), latest iOS
+  - Start from launching the app from the home screen
+  - Show feed list with Smart Feeds and unread counts
+  - Tap **+** → paste an RSS URL (e.g. `https://xkcd.com/rss.xml`) → confirm
+  - Pull-to-refresh → show progress bar and new article count alert
+  - Tap a feed → tap an article to read it
+  - Navigate back → gear icon → Settings → show OPML Import and Export
+  - Upload the recording in App Store Connect → App Review Information → Attachments
+
+- [ ] **Document the test device** — note the iPhone model and iOS version used
+
+- [ ] **Update the Notes field** in App Store Connect → App Review Information with the full text below
+
+---
+
+### Notes for Reviewer (full text — paste into App Store Connect)
+
+```
+PURPOSE
+Fressh is a clean, minimal RSS reader for iPhone. Users subscribe to RSS, Atom, YouTube channel, and Reddit subreddit feeds and read new articles in a distraction-free interface. All data is stored locally on device — no server, no account, no tracking. Target audience: news readers, bloggers, and tech users who prefer a private, account-free alternative to algorithmic news apps.
+
+SETUP
+No login or account is required. To access the app's main features:
+1. Open the app — the feed list loads immediately.
+2. Tap + to add a feed. Paste any RSS/Atom URL, YouTube channel URL, or Reddit subreddit URL.
+3. Pull down to refresh and fetch new articles.
+4. Tap any feed to see its articles; tap an article to read it.
+5. Tap the gear icon → Settings for OPML import/export.
+No demo credentials are needed.
+
+EXTERNAL SERVICES
+- Direct HTTPS requests to RSS/Atom/JSON feed URLs (fetches feeds the user subscribed to from their source servers)
+- YouTube RSS API (youtube.com/feeds/videos.xml) — resolves YouTube channel URLs to their RSS feed
+- Reddit RSS feeds (reddit.com/r/[subreddit]/.rss) — used when the user adds a Reddit subreddit URL
+- Google Favicons API (google.com/s2/favicons) — displays feed icons in the list
+No analytics, crash reporting, advertising, authentication, or payment services are used.
+
+REGIONAL DIFFERENCES
+None. The app functions identically in all regions.
+
+NSAllowsArbitraryLoads
+NSAllowsArbitraryLoads is set because some RSS feed servers only support HTTP. The app does not collect or transmit any user data over these connections.
+```
+
+---
+
 ## App Review Information
 
 **First Name**
