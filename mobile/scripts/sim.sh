@@ -15,8 +15,31 @@ if [[ ! -d ios ]]; then
   npx expo prebuild --platform ios
 fi
 
-# Ensure pods are installed/synced
-if ! grep -q "EXDevLauncher" ios/Podfile.lock 2>/dev/null; then
+# Detect stale entitlements: app.json declares entitlements but the generated
+# .entitlements plist is empty. This happens when ios/ was created before
+# entitlements were added to app.json and hasn't been regenerated since.
+_ent_plist=$(find ios -name "*.entitlements" -maxdepth 3 2>/dev/null | head -1)
+if [[ -n "$_ent_plist" ]]; then
+  _app_ent_count=$(node -e "const e=require('./app.json').expo?.ios?.entitlements||{}; console.log(Object.keys(e).length)" 2>/dev/null || echo 0)
+  _plist_key_count=$(grep -c '<key>' "$_ent_plist" 2>/dev/null || echo 0)
+  if (( _app_ent_count > 0 && _plist_key_count == 0 )); then
+    echo ""
+    echo "⚠  app.json has $_app_ent_count entitlement(s) but $_ent_plist is empty."
+    echo "   ios/ was generated before these entitlements were added."
+    read "answer?Delete ios/ and regenerate with expo prebuild? [y/N] "
+    if [[ "$answer" =~ ^[Yy]$ ]]; then
+      rm -rf ios
+      npx expo prebuild --platform ios
+    fi
+  fi
+fi
+
+# Ensure pods are installed/synced.
+# Run pod install if Podfile.lock is missing/stale OR if generated pod headers
+# are gone (e.g. after cleanup-disk-space.sh removed Pods/Headers without
+# removing Podfile.lock, which makes the content check below pass incorrectly).
+if ! grep -q "expo-dev-client" ios/Podfile.lock 2>/dev/null || \
+   [[ ! -d ios/Pods/Headers/Public/yoga ]]; then
   echo "Syncing CocoaPods..."
   (cd ios && pod install)
 fi
@@ -101,12 +124,14 @@ if [[ "$type" == "device" ]]; then
   echo "Building and installing on: $label ($udid)"
   echo "No build credits used — builds locally with Xcode."
   echo ""
-  npx expo run:ios --udid "$udid"
+  npx expo run:ios --device "$udid"
   exit 0
 fi
 
 # ---- Simulator path — local Xcode build ----
 bundle_id=$(node -e "console.log(require('./app.json').expo.ios.bundleIdentifier)")
+workspace=$(find ios -name "*.xcworkspace" -maxdepth 1 | head -1)
+scheme=$(basename "$workspace" .xcworkspace)
 
 echo ""
 echo "Build configuration:"
@@ -116,71 +141,69 @@ echo "  2) Release — production build for screenshots (no dev overlay)"
 echo ""
 read "config_choice?Choice [1-2, default 1]: "
 
-if [[ "$config_choice" == "2" ]]; then
-  config="Release"
-else
-  config="Debug"
-fi
+config="Debug"
+[[ "$config_choice" == "2" ]] && config="Release"
 
 echo ""
 echo "Deploying to: $label ($udid) [$config]"
 echo ""
 
+# Keep the xcassets icon in sync with the source asset.
+# expo prebuild writes a placeholder when it first generates ios/ — syncing
+# here ensures the real icon is always built in, even after a fresh prebuild.
+icon_src="assets/icon.png"
+icon_dst="ios/Fressh/Images.xcassets/AppIcon.appiconset/App-Icon-1024x1024@1x.png"
+if [[ -f "$icon_src" && -f "$icon_dst" ]]; then
+  cp "$icon_src" "$icon_dst"
+fi
+
+# Keep CFBundleDisplayName in sync with app.json "name".
+# expo prebuild sets it once; subsequent runs don't update it.
+app_name=$(node -e "console.log(require('./app.json').expo.name)")
+info_plist="ios/Fressh/Info.plist"
+if [[ -f "$info_plist" && -n "$app_name" ]]; then
+  /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName $app_name" "$info_plist" 2>/dev/null || true
+fi
+
 # Remove stale install
 xcrun simctl uninstall "$udid" "$bundle_id" 2>/dev/null || true
 
-# Workspace and scheme
-workspace=$(find ios -name "*.xcworkspace" -maxdepth 1 | head -1)
-scheme=$(basename "$workspace" .xcworkspace)
-
-config_lower=$(echo "$config" | tr '[:upper:]' '[:lower:]')
-
 # Clean build if DerivedData is missing or Podfile.lock changed
-derived_app=$(find ~/Library/Developer/Xcode/DerivedData -name "${scheme}.app" -path "*/${config}-iphonesimulator/*" 2>/dev/null | head -1)
-build_args=(-workspace "$workspace" -configuration "$config" -scheme "$scheme" -destination "id=$udid")
+derived_app=""
+[[ -d ~/Library/Developer/Xcode/DerivedData ]] && \
+  derived_app=$(find ~/Library/Developer/Xcode/DerivedData -name "${scheme}.app" -path "*/${config}-iphonesimulator/*" 2>/dev/null | head -1) || true
+build_args=(-workspace "$workspace" -scheme "$scheme" -configuration "$config" -destination "id=$udid")
 if [[ -z "$derived_app" || ios/Podfile.lock -nt "$derived_app" ]]; then
-  echo "Native dependencies changed — clearing DerivedData..."
-  rm -rf ~/Library/Developer/Xcode/DerivedData/${scheme}-*(N)
+  echo "Clearing DerivedData for clean build..."
+  rm -rf ~/Library/Developer/Xcode/DerivedData/${scheme}-*(N) 2>/dev/null || true
   build_args+=(clean)
 fi
 build_args+=(build)
 
-echo "Building..."
-if command -v xcpretty > /dev/null 2>&1; then
-  RCT_NO_LAUNCH_PACKAGER=true xcodebuild "${build_args[@]}" 2>&1 | xcpretty
-else
-  RCT_NO_LAUNCH_PACKAGER=true xcodebuild "${build_args[@]}" > /tmp/fressh-build.log 2>&1 || {
-    echo "Build failed. Log: /tmp/fressh-build.log"
-    exit 1
-  }
-  echo "Build succeeded"
-fi
-
-# Install built app onto the chosen simulator
-built_app=$(find ~/Library/Developer/Xcode/DerivedData -name "${scheme}.app" -path "*/${config}-iphonesimulator/*" 2>/dev/null | head -1)
-if [[ -z "$built_app" ]]; then
-  echo "No .app found after build."
+echo "Building $config..."
+RCT_NO_LAUNCH_PACKAGER=true xcodebuild "${build_args[@]}" > /tmp/fressh-build.log 2>&1 || {
+  echo "Build failed. Log: /tmp/fressh-build.log"
+  tail -20 /tmp/fressh-build.log
   exit 1
-fi
-echo "Installing on $label..."
+}
+
+built_app=$(find ~/Library/Developer/Xcode/DerivedData -name "${scheme}.app" -path "*/${config}-iphonesimulator/*" 2>/dev/null | head -1)
+[[ -z "$built_app" ]] && { echo "No .app found after build."; exit 1; }
+
+echo "Installing..."
 xcrun simctl install "$udid" "$built_app"
 
 if [[ "$config" == "Release" ]]; then
-  # Release: launch directly — no Metro needed, JS is bundled into the app
   xcrun simctl launch "$udid" "$bundle_id"
   echo ""
-  echo "App launched in Release mode. No dev overlay — ready for screenshots."
+  echo "App launched in Release mode — ready for screenshots."
 else
-  # Debug: open via dev-client URL once Metro is ready
   # Kill any stale Metro on port 8081
   lsof -ti tcp:8081 | xargs kill -9 2>/dev/null || true
-
   (
     until curl -sf http://localhost:8081/status > /dev/null 2>&1; do sleep 1; done
     echo "Opening on $label..."
     xcrun simctl openurl "$udid" "${bundle_id}://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
   ) &
-
-  # Start Metro in the foreground (Ctrl+C to stop)
   npx expo start --dev-client
 fi

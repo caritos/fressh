@@ -82,54 +82,88 @@ https://fressh.caritos.com/privacy
 
 ---
 
-## Guideline 2.1 Resubmission (review rejection 2026-05-21)
+## Guideline 2.1 Resubmission — Issue #7 (second rejection)
 
-Apple requested additional information before continuing the review. All items below must be completed before resubmitting. See also: [GitHub issue #6](https://github.com/caritos/fressh/issues/6)
+Apple requested additional information before continuing the review. This is a second request; the notes below supersede the issue #6 notes. See also: [GitHub issue #7](https://github.com/caritos/fressh/issues/7)
 
 ### Checklist
 
 - [ ] **Screen recording on a physical iPhone** (not Simulator), latest iOS
-  - Start from launching the app from the home screen
-  - Show feed list with Smart Feeds and unread counts
-  - Tap **+** → paste an RSS URL (e.g. `https://xkcd.com/rss.xml`) → confirm
-  - Pull-to-refresh → show progress bar and new article count alert
-  - Tap a feed → tap an article to read it
-  - Navigate back → gear icon → Settings → show OPML Import and Export
-  - Upload the recording in App Store Connect → App Review Information → Attachments
+  - Start from launching the app cold from the home screen
+  - Show the feed list (Smart Feeds + user feeds, unread counts)
+  - Tap **+** → paste an RSS URL (e.g. `https://feeds.arstechnica.com/arstechnica/index`) → confirm
+  - Pull-to-refresh → show progress bar and new article count
+  - Tap a feed → tap an article → read it → use prev/next nav buttons
+  - Show the star and share buttons in the article header
+  - Go back → swipe an article row left (Star / Share) and right (Read/Unread)
+  - Gear icon → Settings → show OPML Import and Export rows
+  - **Note for reviewer screen capture:** explicitly show that there is NO login screen, NO purchase flow, NO camera/location/contacts prompt at any point
+  - Upload in App Store Connect → App Review Information → Attachments
 
-- [ ] **Document the test device** — note the iPhone model and iOS version used
+- [ ] **Document test device** — exact iPhone model (e.g. iPhone 15 Pro) and iOS version (e.g. iOS 18.4)
 
-- [ ] **Update the Notes field** in App Store Connect → App Review Information with the full text below
+- [ ] **Update Notes field** in App Store Connect → App Review Information with the full text below
 
 ---
 
-### Notes for Reviewer (full text — paste into App Store Connect)
+### Notes for Reviewer — Issue #7 (paste into App Store Connect)
 
 ```
-PURPOSE
-Fressh is a clean, minimal RSS reader for iPhone. Users subscribe to RSS, Atom, YouTube channel, and Reddit subreddit feeds and read new articles in a distraction-free interface. All data is stored locally on device — no server, no account, no tracking. Target audience: news readers, bloggers, and tech users who prefer a private, account-free alternative to algorithmic news apps.
+1. SCREEN RECORDING
+The attached screen recording was captured on [INSERT: iPhone model, iOS version] and shows the complete typical user flow: launching the app, adding a feed by URL, refreshing to fetch new articles, reading an article, starring an article, sharing, navigating between articles with the prev/next bar, and accessing Settings for OPML import/export.
 
-SETUP
-No login or account is required. To access the app's main features:
-1. Open the app — the feed list loads immediately.
-2. Tap + to add a feed. Paste any RSS/Atom URL, YouTube channel URL, or Reddit subreddit URL.
-3. Pull down to refresh and fetch new articles.
-4. Tap any feed to see its articles; tap an article to read it.
-5. Tap the gear icon → Settings for OPML import/export.
+The app has no account registration or login flow. There is no paid content, no subscription, and no in-app purchase. There is no user-generated content. The app never requests access to camera, location, contacts, microphone, or any sensitive data, and does not use App Tracking Transparency.
+
+2. DEVICES TESTED
+[INSERT: e.g. iPhone 15 Pro, iOS 18.4 — tested on physical device before submission]
+
+3. APP PURPOSE AND TARGET AUDIENCE
+Fressh is a clean, minimal RSS/Atom feed reader for iPhone. It solves the problem of staying informed without algorithmic curation, advertising, or engagement manipulation: users subscribe directly to sources they trust and read new articles in the order they were published.
+
+Target audience: news readers, bloggers, developers, and anyone who prefers a private, account-free alternative to algorithmic news apps. The app is appropriate for all ages (4+).
+
+The core value Fressh provides:
+- Full control over what you read — no algorithm, no feed manipulation
+- Privacy — all data is stored locally on-device; no server, no account, no tracking
+- Supports any public RSS, Atom, YouTube channel, or Reddit subreddit feed
+- Clean reading experience with no ads, notifications, or dark patterns
+
+4. SETUP AND ACCESSING MAIN FEATURES
+No login or account is required at any point.
+
+To access all core features:
+a. Open the app — the feed list loads immediately with Smart Feeds (All Unread, Starred, Today) and any user-added feeds.
+b. Tap the + button (top right) → paste any RSS/Atom feed URL, a YouTube channel URL, or a Reddit subreddit URL → tap Add.
+   Example RSS feeds: https://feeds.arstechnica.com/arstechnica/index / https://xkcd.com/rss.xml
+c. Pull down on the feed list to refresh all feeds and fetch new articles.
+d. Tap any feed to see its article list.
+e. Tap an article to read it. Use the ‹ › bar at the bottom to navigate between articles.
+f. Use the ★ star and ↑ share buttons in the article header to save or share.
+g. Swipe an article row left to Star/Share; swipe right to toggle Read/Unread.
+h. Tap the gear icon (⚙) → Settings to import subscriptions via OPML or export them.
+
 No demo credentials are needed.
 
-EXTERNAL SERVICES
-- Direct HTTPS requests to RSS/Atom/JSON feed URLs (fetches feeds the user subscribed to from their source servers)
-- YouTube RSS API (youtube.com/feeds/videos.xml) — resolves YouTube channel URLs to their RSS feed
-- Reddit RSS feeds (reddit.com/r/[subreddit]/.rss) — used when the user adds a Reddit subreddit URL
-- Google Favicons API (google.com/s2/favicons) — displays feed icons in the list
-No analytics, crash reporting, advertising, authentication, or payment services are used.
+5. EXTERNAL SERVICES
+The app makes direct network requests only to the following services:
 
-REGIONAL DIFFERENCES
-None. The app functions identically in all regions.
+a. RSS/Atom feed servers — the app fetches feed XML directly from the URL the user subscribed to (e.g. arstechnica.com, xkcd.com). These are public feeds hosted by the content publishers. No Fressh server is involved.
 
-NSAllowsArbitraryLoads
-NSAllowsArbitraryLoads is set because some RSS feed servers only support HTTP. The app does not collect or transmit any user data over these connections.
+b. YouTube RSS endpoint (youtube.com/feeds/videos.xml) — when a user adds a YouTube channel URL, the app fetches the channel's public HTML page to extract the channel ID, then constructs the standard YouTube RSS feed URL. No YouTube API key or OAuth is used; these are publicly accessible RSS feeds.
+
+c. Reddit RSS endpoint (reddit.com/r/{subreddit}/top/.rss) — when a user adds a Reddit subreddit URL, the app requests Reddit's public RSS feed for that subreddit. No Reddit account or API key is required.
+
+d. Google Favicons API (google.com/s2/favicons) — used to display the website icon (favicon) next to each feed in the list. This is a display-only request; no user data is transmitted.
+
+No analytics, crash reporting, advertising networks, authentication services, payment processors, or AI services are used.
+
+NSAllowsArbitraryLoads is set to true because some RSS feed servers still serve content over HTTP rather than HTTPS. The app does not collect, store, or transmit any user data over these connections.
+
+6. REGIONAL DIFFERENCES
+None. The app functions identically in all regions. There is no region-specific content, no geo-restricted features, and no localization — all UI is in English.
+
+7. REGULATED INDUSTRY / PROTECTED MATERIAL
+Fressh is not in a regulated industry. It does not offer financial advice, medical information, legal services, or any other regulated content. It does not display third-party protected material beyond publicly accessible RSS/Atom feeds served directly from their publishers' servers.
 ```
 
 ---
