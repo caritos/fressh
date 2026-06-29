@@ -18,6 +18,11 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.caritos.fressh",
+      "entitlements": {
+        "com.apple.developer.ubiquity-container-identifiers": ["iCloud.com.caritos.fressh"],
+        "com.apple.developer.icloud-container-identifiers": ["iCloud.com.caritos.fressh"],
+        "com.apple.developer.icloud-services": ["CloudDocuments"]
+      },
       "infoPlist": {
         "UIBackgroundModes": [
           "fetch",
