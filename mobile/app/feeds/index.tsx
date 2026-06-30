@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   SectionList,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter, Stack } from 'expo-router';
 import { Swipeable } from 'react-native-gesture-handler';
 import { getDb } from '../../src/db/database';
@@ -217,7 +218,7 @@ export default function FeedsScreen() {
           headerRight: () => (
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <TouchableOpacity style={styles.headerBtn} onPress={() => router.push('/settings')}>
-                <Text style={styles.headerGearText}>⚙</Text>
+                <Ionicons name="settings-outline" size={18} color={COLORS.textSecondary} />
               </TouchableOpacity>
               <View style={styles.headerBtnDivider} />
               <TouchableOpacity style={styles.headerBtn} onPress={onRefresh} disabled={refreshing}>
@@ -282,6 +283,19 @@ export default function FeedsScreen() {
               />
             </Swipeable>
           );
+        }}
+        renderSectionFooter={({ section }) => {
+          if (section.title === 'Feeds' && feeds.length === 0) {
+            return (
+              <View style={styles.emptyHint}>
+                <Text style={styles.emptyHintText}>
+                  Tap <Text style={styles.emptyHintAccent}>+</Text> to add your first feed, or go to{' '}
+                  <Text style={styles.emptyHintAccent}>Settings</Text> to import an OPML file.
+                </Text>
+              </View>
+            );
+          }
+          return null;
         }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.accent} />
@@ -356,10 +370,19 @@ const styles = StyleSheet.create({
     color: COLORS.accent,
     lineHeight: 30,
   },
-  headerGearText: {
-    fontSize: 18,
+  emptyHint: {
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+  },
+  emptyHintText: {
+    fontFamily: FONTS.sans,
+    fontSize: 14,
     color: COLORS.textSecondary,
-    lineHeight: 24,
+    lineHeight: 22,
+  },
+  emptyHintAccent: {
+    color: COLORS.accent,
+    fontFamily: FONTS.sansMedium,
   },
   progressBar: {
     height: 2,
