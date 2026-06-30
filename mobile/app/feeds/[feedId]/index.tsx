@@ -5,7 +5,6 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
-  RefreshControl,
   Alert,
   Share,
   ActivityIndicator,
@@ -202,9 +201,6 @@ export default function ArticleListScreen() {
         data={articles}
         keyExtractor={(a) => String(a.id)}
         renderItem={renderItem}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.accent} />
-        }
         contentContainerStyle={{ paddingBottom: TOOLBAR_HEIGHT + insets.bottom + 16 }}
         ListEmptyComponent={
           <Text style={styles.empty}>No articles here.</Text>
