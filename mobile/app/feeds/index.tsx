@@ -291,7 +291,9 @@ export default function FeedsScreen() {
         </TouchableOpacity>
         <View style={styles.toolbarDivider} />
         <TouchableOpacity style={styles.toolbarBtn} onPress={onRefresh} disabled={refreshing}>
-          <Text style={[styles.toolbarRefreshText, refreshing && { opacity: 0.4 }]}>↻</Text>
+          {refreshing
+            ? <ActivityIndicator size="small" color={COLORS.accent} />
+            : <Text style={styles.toolbarRefreshText}>↻</Text>}
         </TouchableOpacity>
         <View style={styles.toolbarDivider} />
         <TouchableOpacity style={styles.toolbarBtn} onPress={() => setAddVisible(true)}>
