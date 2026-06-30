@@ -8,7 +8,10 @@ import {
   RefreshControl,
   Alert,
   Share,
+  ActivityIndicator,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { Swipeable } from 'react-native-gesture-handler';
 import { getDb } from '../../../src/db/database';
@@ -32,6 +35,8 @@ const SMART_LABELS: Record<string, string> = {
   today: 'Today',
 };
 
+const TOOLBAR_HEIGHT = 50;
+
 function formatRelative(iso: string | null): string {
   if (!iso) return '';
   const diff = Date.now() - new Date(iso).getTime();
@@ -45,6 +50,7 @@ function formatRelative(iso: string | null): string {
 
 export default function ArticleListScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { feedId: rawId } = useLocalSearchParams<{ feedId: string }>();
   if (Array.isArray(rawId)) return null;
   const feedId =
@@ -184,28 +190,14 @@ export default function ArticleListScreen() {
     );
   }, [articles, feedId, rawId]);
 
+  const hasMarkAllRead = typeof feedId === 'number' || feedId === 'unread';
+
   return (
-    <>
-      <Stack.Screen
-        options={{
-          title: feedTitle,
-          headerRight: () => (
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 4 }}>
-              {(typeof feedId === 'number' || feedId === 'unread') && (
-                <>
-                  <TouchableOpacity onPress={onMarkAllRead} style={styles.headerBtn}>
-                    <Text style={styles.markAllRead}>Mark All Read</Text>
-                  </TouchableOpacity>
-                  <View style={styles.headerBtnDivider} />
-                </>
-              )}
-              <TouchableOpacity onPress={onRefresh} disabled={refreshing} style={styles.headerBtn}>
-                <Text style={styles.refreshBtn}>↻</Text>
-              </TouchableOpacity>
-            </View>
-          ),
-        }}
-      />
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <Stack.Screen options={{ headerShown: false }} />
+
+      {feedTitle ? <Text style={styles.screenTitle}>{feedTitle}</Text> : null}
+
       <FlatList
         data={articles}
         keyExtractor={(a) => String(a.id)}
@@ -213,34 +205,79 @@ export default function ArticleListScreen() {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.accent} />
         }
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingBottom: TOOLBAR_HEIGHT + insets.bottom + 16 }}
         ListEmptyComponent={
           <Text style={styles.empty}>No articles here.</Text>
         }
       />
-    </>
+
+      <View style={[styles.toolbar, { paddingBottom: insets.bottom }]}>
+        <TouchableOpacity style={styles.toolbarBtn} onPress={() => router.back()}>
+          <Ionicons name="chevron-back" size={24} color={COLORS.accent} />
+        </TouchableOpacity>
+
+        <View style={styles.toolbarDivider} />
+
+        {hasMarkAllRead ? (
+          <TouchableOpacity style={styles.toolbarBtn} onPress={onMarkAllRead}>
+            <Text style={styles.toolbarMarkRead}>Mark All Read</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.toolbarBtn} />
+        )}
+
+        <View style={styles.toolbarDivider} />
+
+        <TouchableOpacity style={styles.toolbarBtn} onPress={onRefresh} disabled={refreshing}>
+          {refreshing
+            ? <ActivityIndicator size="small" color={COLORS.accent} />
+            : <Text style={styles.toolbarRefreshText}>↻</Text>}
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  headerBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  headerBtnDivider: {
-    width: StyleSheet.hairlineWidth,
-    height: 16,
-    backgroundColor: COLORS.border,
-  },
-  markAllRead: {
-    fontFamily: FONTS.sansMedium,
+  container: { flex: 1, backgroundColor: COLORS.background },
+  screenTitle: {
+    fontFamily: FONTS.sansBold,
     fontSize: 13,
+    color: COLORS.text,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+    letterSpacing: 0.3,
+  },
+  toolbar: {
+    flexDirection: 'row',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+  },
+  toolbarBtn: {
+    flex: 1,
+    height: TOOLBAR_HEIGHT,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toolbarDivider: {
+    width: StyleSheet.hairlineWidth,
+    backgroundColor: COLORS.border,
+    alignSelf: 'stretch',
+    marginVertical: 10,
+  },
+  toolbarMarkRead: {
+    fontFamily: FONTS.sansMedium,
+    fontSize: 12,
     color: COLORS.accent,
   },
-  refreshBtn: {
-    fontSize: 20,
+  toolbarRefreshText: {
+    fontSize: 22,
     color: COLORS.accent,
-    lineHeight: 24,
+    lineHeight: 26,
   },
   swipeAction: {
     justifyContent: 'center',
