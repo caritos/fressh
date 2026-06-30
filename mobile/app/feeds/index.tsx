@@ -192,17 +192,74 @@ export default function FeedsScreen() {
     }
   };
 
-  const getSmartCount = (id: string): number => {
+  const getSmartCount = useCallback((id: string): number => {
     if (id === 'starred') return smartCounts.starred;
     if (id === 'unread') return smartCounts.unread;
     if (id === 'today') return smartCounts.today;
     return 0;
-  };
+  }, [smartCounts]);
 
   const sections = useMemo(() => [
     { title: 'Smart Feeds', data: SMART_FEEDS.map(s => ({ ...s, isSmart: true as const })) },
     { title: 'Feeds', data: feeds.map(f => ({ ...f, isSmart: false as const })) },
   ], [feeds]);
+
+  const renderSectionHeader = useCallback(({ section }: { section: { title: string } }) => (
+    <SectionHeader title={section.title} />
+  ), []);
+
+  const renderSectionFooter = useCallback(({ section }: { section: { title: string } }) => {
+    if (section.title === 'Feeds' && feeds.length === 0) {
+      return (
+        <View style={styles.emptyHint}>
+          <Text style={styles.emptyHintText}>
+            Tap <Text style={styles.emptyHintAccent}>+</Text> to add your first feed, or use{' '}
+            <Text style={styles.emptyHintAccent}>Settings</Text> to import an OPML file.
+          </Text>
+        </View>
+      );
+    }
+    return null;
+  }, [feeds.length]);
+
+  const renderItem = useCallback(({ item }: { item: any }) => {
+    if (item.isSmart) {
+      const count = getSmartCount(item.id);
+      return (
+        <Row
+          label={item.label}
+          badge={count}
+          onPress={() => router.push(`/feeds/${item.id}`)}
+        />
+      );
+    }
+    const feed = item as FeedRow & { isSmart: false };
+    const faviconUrl = (() => {
+      try {
+        const { hostname } = new URL(feed.site_url ?? feed.url);
+        return `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`;
+      } catch { return undefined; }
+    })();
+    return (
+      <Swipeable
+        renderRightActions={() => (
+          <TouchableOpacity
+            style={styles.deleteAction}
+            onPress={() => onDeleteFeed(feed)}
+          >
+            <Text style={styles.deleteActionText}>Remove</Text>
+          </TouchableOpacity>
+        )}
+      >
+        <Row
+          label={feed.title ?? feed.url}
+          badge={feed.unread_count}
+          icon={faviconUrl}
+          onPress={() => router.push(`/feeds/${feed.id}`)}
+        />
+      </Swipeable>
+    );
+  }, [feeds, smartCounts, onDeleteFeed, getSmartCount, router]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -211,61 +268,9 @@ export default function FeedsScreen() {
       <SectionList
         sections={sections}
         keyExtractor={(item) => String((item as any).id)}
-        renderSectionHeader={({ section }) => (
-          <SectionHeader title={section.title} />
-        )}
-        renderItem={({ item }) => {
-          if ((item as any).isSmart) {
-            const smart = item as typeof SMART_FEEDS[0] & { isSmart: true };
-            const count = getSmartCount(smart.id);
-            return (
-              <Row
-                label={smart.label}
-                badge={count}
-                onPress={() => router.push(`/feeds/${smart.id}`)}
-              />
-            );
-          }
-          const feed = item as FeedRow & { isSmart: false };
-          const faviconUrl = (() => {
-            try {
-              const { hostname } = new URL(feed.site_url ?? feed.url);
-              return `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`;
-            } catch { return undefined; }
-          })();
-          return (
-            <Swipeable
-              renderRightActions={() => (
-                <TouchableOpacity
-                  style={styles.deleteAction}
-                  onPress={() => onDeleteFeed(feed)}
-                >
-                  <Text style={styles.deleteActionText}>Remove</Text>
-                </TouchableOpacity>
-              )}
-            >
-              <Row
-                label={feed.title ?? feed.url}
-                badge={feed.unread_count}
-                icon={faviconUrl}
-                onPress={() => router.push(`/feeds/${feed.id}`)}
-              />
-            </Swipeable>
-          );
-        }}
-        renderSectionFooter={({ section }) => {
-          if (section.title === 'Feeds' && feeds.length === 0) {
-            return (
-              <View style={styles.emptyHint}>
-                <Text style={styles.emptyHintText}>
-                  Tap <Text style={styles.emptyHintAccent}>+</Text> to add your first feed, or use{' '}
-                  <Text style={styles.emptyHintAccent}>Settings</Text> to import an OPML file.
-                </Text>
-              </View>
-            );
-          }
-          return null;
-        }}
+        renderSectionHeader={renderSectionHeader}
+        renderItem={renderItem}
+        renderSectionFooter={renderSectionFooter}
         contentContainerStyle={{ paddingBottom: TOOLBAR_HEIGHT + insets.bottom + 16 }}
       />
 

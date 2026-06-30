@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { FONTS, COLORS } from '../../constants';
 import Badge from './Badge';
@@ -12,7 +12,7 @@ type Props = {
   onPress: () => void;
 };
 
-export default function Row({ label, meta, badge, dimmed, icon, onPress }: Props) {
+function Row({ label, meta, badge, dimmed, icon, onPress }: Props) {
   const [iconFailed, setIconFailed] = useState(false);
 
   return (
@@ -39,6 +39,8 @@ export default function Row({ label, meta, badge, dimmed, icon, onPress }: Props
     </TouchableOpacity>
   );
 }
+
+export default memo(Row);
 
 const styles = StyleSheet.create({
   row: {
