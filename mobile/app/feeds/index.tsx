@@ -369,13 +369,13 @@ const styles = StyleSheet.create({
   deleteActionText: { fontFamily: FONTS.sansBold, color: '#fff', fontSize: 13 },
   toolbar: {
     flexDirection: 'row',
-    height: TOOLBAR_HEIGHT,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: COLORS.border,
     backgroundColor: COLORS.surface,
   },
   toolbarBtn: {
     flex: 1,
+    height: TOOLBAR_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
   },
