@@ -95,7 +95,6 @@ export default function RootLayout() {
           headerBackButtonDisplayMode: 'minimal',
         }}
       >
-        <Stack.Screen name="feeds/index" options={{ title: 'FRESSH' }} />
         <Stack.Screen name="settings" options={{ title: 'Settings' }} />
       </Stack>
     </GestureHandlerRootView>

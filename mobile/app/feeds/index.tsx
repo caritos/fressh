@@ -12,6 +12,7 @@ import {
   SectionList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter, Stack } from 'expo-router';
 import { Swipeable } from 'react-native-gesture-handler';
 import { getDb } from '../../src/db/database';
@@ -30,8 +31,11 @@ const SMART_FEEDS = [
   { id: 'today', label: 'Today' },
 ];
 
+const TOOLBAR_HEIGHT = 50;
+
 export default function FeedsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [feeds, setFeeds] = useState<FeedRow[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshProgress, setRefreshProgress] = useState<{ done: number; total: number } | null>(null);
@@ -207,31 +211,8 @@ export default function FeedsScreen() {
   ], [feeds]);
 
   return (
-    <View style={styles.container}>
-      <Stack.Screen
-        options={{
-          headerTitle: () => (
-            <Text style={styles.headerTitle}>
-              {'F'}<Text style={styles.headerTitleAccent}>R</Text>{'E'}<Text style={styles.headerTitleAccent}>SS</Text>{'H'}
-            </Text>
-          ),
-          headerRight: () => (
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <TouchableOpacity style={styles.headerBtn} onPress={() => router.push('/settings')}>
-                <Ionicons name="settings-outline" size={18} color={COLORS.textSecondary} />
-              </TouchableOpacity>
-              <View style={styles.headerBtnDivider} />
-              <TouchableOpacity style={styles.headerBtn} onPress={onRefresh} disabled={refreshing}>
-                <Text style={styles.headerRefreshText}>↻</Text>
-              </TouchableOpacity>
-              <View style={styles.headerBtnDivider} />
-              <TouchableOpacity style={styles.headerBtn} onPress={() => setAddVisible(true)}>
-                <Text style={styles.headerBtnText}>+</Text>
-              </TouchableOpacity>
-            </View>
-          ),
-        }}
-      />
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <Stack.Screen options={{ headerShown: false }} />
 
       {refreshProgress && refreshProgress.total > 0 && (
         <View style={styles.progressBar}>
@@ -289,7 +270,7 @@ export default function FeedsScreen() {
             return (
               <View style={styles.emptyHint}>
                 <Text style={styles.emptyHintText}>
-                  Tap <Text style={styles.emptyHintAccent}>+</Text> to add your first feed, or go to{' '}
+                  Tap <Text style={styles.emptyHintAccent}>+</Text> to add your first feed, or use{' '}
                   <Text style={styles.emptyHintAccent}>Settings</Text> to import an OPML file.
                 </Text>
               </View>
@@ -300,8 +281,23 @@ export default function FeedsScreen() {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.accent} />
         }
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingBottom: TOOLBAR_HEIGHT + insets.bottom + 16 }}
       />
+
+      {/* Bottom action bar */}
+      <View style={[styles.toolbar, { paddingBottom: insets.bottom }]}>
+        <TouchableOpacity style={styles.toolbarBtn} onPress={() => router.push('/settings')}>
+          <Ionicons name="settings-outline" size={20} color={COLORS.textSecondary} />
+        </TouchableOpacity>
+        <View style={styles.toolbarDivider} />
+        <TouchableOpacity style={styles.toolbarBtn} onPress={onRefresh} disabled={refreshing}>
+          <Text style={[styles.toolbarRefreshText, refreshing && { opacity: 0.4 }]}>↻</Text>
+        </TouchableOpacity>
+        <View style={styles.toolbarDivider} />
+        <TouchableOpacity style={styles.toolbarBtn} onPress={() => setAddVisible(true)}>
+          <Text style={styles.toolbarAddText}>+</Text>
+        </TouchableOpacity>
+      </View>
 
       <Modal visible={addVisible} animationType="slide" presentationStyle="pageSheet">
         <View style={styles.modal}>
@@ -336,39 +332,19 @@ export default function FeedsScreen() {
           </View>
         </View>
       </Modal>
-
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  headerTitle: {
-    fontFamily: FONTS.sansBold,
-    fontSize: 14,
-    color: COLORS.text,
-    letterSpacing: 1,
-  },
-  headerTitleAccent: {
-    color: COLORS.accent,
-  },
-  headerBtn: { paddingHorizontal: 8, paddingVertical: 4 },
-  headerBtnDivider: {
-    width: StyleSheet.hairlineWidth,
-    height: 16,
+  progressBar: {
+    height: 2,
     backgroundColor: COLORS.border,
   },
-  headerRefreshText: {
-    fontSize: 20,
-    color: COLORS.accent,
-    lineHeight: 24,
-  },
-  headerBtnText: {
-    fontSize: 26,
-    fontFamily: FONTS.sans,
-    fontWeight: '300',
-    color: COLORS.accent,
-    lineHeight: 30,
+  progressFill: {
+    height: 2,
+    backgroundColor: COLORS.accent,
   },
   emptyHint: {
     paddingHorizontal: 16,
@@ -384,14 +360,6 @@ const styles = StyleSheet.create({
     color: COLORS.accent,
     fontFamily: FONTS.sansMedium,
   },
-  progressBar: {
-    height: 2,
-    backgroundColor: COLORS.border,
-  },
-  progressFill: {
-    height: 2,
-    backgroundColor: COLORS.accent,
-  },
   deleteAction: {
     backgroundColor: '#C0392B',
     justifyContent: 'center',
@@ -399,6 +367,36 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   deleteActionText: { fontFamily: FONTS.sansBold, color: '#fff', fontSize: 13 },
+  toolbar: {
+    flexDirection: 'row',
+    height: TOOLBAR_HEIGHT,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+  },
+  toolbarBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toolbarDivider: {
+    width: StyleSheet.hairlineWidth,
+    backgroundColor: COLORS.border,
+    alignSelf: 'stretch',
+    marginVertical: 10,
+  },
+  toolbarRefreshText: {
+    fontSize: 22,
+    color: COLORS.accent,
+    lineHeight: 26,
+  },
+  toolbarAddText: {
+    fontSize: 28,
+    fontFamily: FONTS.sans,
+    fontWeight: '300',
+    color: COLORS.accent,
+    lineHeight: 32,
+  },
   modal: {
     flex: 1,
     backgroundColor: COLORS.surface,
