@@ -38,7 +38,6 @@ export default function FeedsScreen() {
   const insets = useSafeAreaInsets();
   const [feeds, setFeeds] = useState<FeedRow[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [refreshProgress, setRefreshProgress] = useState<{ done: number; total: number } | null>(null);
   const [addVisible, setAddVisible] = useState(false);
   const [addUrl, setAddUrl] = useState('');
   const [addLoading, setAddLoading] = useState(false);
@@ -78,11 +77,8 @@ export default function FeedsScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    setRefreshProgress(null);
     try {
-      const summary = await refresh((done, total) => {
-        setRefreshProgress({ done, total });
-      });
+      const summary = await refresh();
       await loadFeeds();
       if (summary.newArticles > 0) {
         Alert.alert('Refreshed', `${summary.newArticles} new article${summary.newArticles === 1 ? '' : 's'}.`);
@@ -91,7 +87,6 @@ export default function FeedsScreen() {
       Alert.alert('Refresh failed', 'Check your connection and try again.');
     } finally {
       setRefreshing(false);
-      setRefreshProgress(null);
     }
   };
 
@@ -214,12 +209,6 @@ export default function FeedsScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {refreshProgress && refreshProgress.total > 0 && (
-        <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: `${(refreshProgress.done / refreshProgress.total) * 100}%` as any }]} />
-        </View>
-      )}
-
       <SectionList
         sections={sections}
         keyExtractor={(item) => String((item as any).id)}
@@ -340,14 +329,6 @@ export default function FeedsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  progressBar: {
-    height: 2,
-    backgroundColor: COLORS.border,
-  },
-  progressFill: {
-    height: 2,
-    backgroundColor: COLORS.accent,
-  },
   emptyHint: {
     paddingHorizontal: 16,
     paddingVertical: 20,
