@@ -6,6 +6,9 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  Modal,
+  TextInput,
+  ScrollView,
 } from 'react-native';
 import { Stack } from 'expo-router';
 import { Linking } from 'react-native';
@@ -18,9 +21,28 @@ import { getFeeds, upsertFeed, getFeedByUrl } from '../src/db/queries';
 import { parseOpml, buildOpml } from '../src/fetcher/opml';
 import { FONTS, COLORS } from '../src/constants';
 
+async function importOpmlXml(xml: string): Promise<{ added: number; skipped: number; errors: number }> {
+  const feeds = parseOpml(xml);
+  if (feeds.length === 0) throw new Error('NO_FEEDS');
+  const db = getDb();
+  let added = 0, skipped = 0, errors = 0;
+  for (const feed of feeds) {
+    try {
+      const existing = await getFeedByUrl(db, feed.url);
+      if (existing) { skipped++; continue; }
+      await upsertFeed(db, { url: feed.url, title: feed.title, site_url: feed.siteUrl });
+      added++;
+    } catch { errors++; }
+  }
+  return { added, skipped, errors };
+}
+
 export default function SettingsScreen() {
   const [importProgress, setImportProgress] = useState<{ current: number; total: number } | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [pasteVisible, setPasteVisible] = useState(false);
+  const [pasteText, setPasteText] = useState('');
+  const [pasteLoading, setPasteLoading] = useState(false);
 
   const onImport = async () => {
     const picked = await DocumentPicker.getDocumentAsync({
@@ -62,15 +84,10 @@ export default function SettingsScreen() {
       const feed = feeds[i];
       try {
         const existing = await getFeedByUrl(db, feed.url);
-        if (existing) {
-          skipped++;
-          continue;
-        }
+        if (existing) { skipped++; continue; }
         await upsertFeed(db, { url: feed.url, title: feed.title, site_url: feed.siteUrl });
         added++;
-      } catch {
-        errors++;
-      }
+      } catch { errors++; }
     }
 
     setImportProgress(null);
@@ -79,6 +96,29 @@ export default function SettingsScreen() {
     if (skipped > 0) parts.push(`${skipped} already in your list.`);
     if (errors > 0) parts.push(`${errors} failed.`);
     Alert.alert('Import complete', parts.join(' '));
+  };
+
+  const onImportPaste = async () => {
+    const xml = pasteText.trim();
+    if (!xml) return;
+    setPasteLoading(true);
+    try {
+      const { added, skipped, errors } = await importOpmlXml(xml);
+      setPasteText('');
+      setPasteVisible(false);
+      const parts = [`Added ${added} feed${added === 1 ? '' : 's'}.`];
+      if (skipped > 0) parts.push(`${skipped} already in your list.`);
+      if (errors > 0) parts.push(`${errors} failed.`);
+      Alert.alert('Import complete', parts.join(' '));
+    } catch (e: any) {
+      if (e?.message === 'NO_FEEDS') {
+        Alert.alert('No feeds found', 'No feed subscriptions found in this OPML.');
+      } else {
+        Alert.alert('Invalid OPML', "This doesn't look like a valid OPML file.");
+      }
+    } finally {
+      setPasteLoading(false);
+    }
   };
 
   const onExport = async () => {
@@ -119,6 +159,21 @@ export default function SettingsScreen() {
           <View style={styles.rowContent}>
             <Text style={styles.rowTitle}>Import OPML</Text>
             <Text style={styles.rowSubtitle}>Add feeds from an .opml file</Text>
+          </View>
+          <Text style={styles.chevron}>›</Text>
+        </TouchableOpacity>
+
+        <View style={styles.divider} />
+
+        <TouchableOpacity
+          style={styles.row}
+          onPress={() => setPasteVisible(true)}
+          disabled={importProgress !== null || exporting}
+          activeOpacity={0.6}
+        >
+          <View style={styles.rowContent}>
+            <Text style={styles.rowTitle}>Paste OPML</Text>
+            <Text style={styles.rowSubtitle}>Paste OPML XML directly</Text>
           </View>
           <Text style={styles.chevron}>›</Text>
         </TouchableOpacity>
@@ -198,6 +253,46 @@ export default function SettingsScreen() {
           <Text style={styles.chevron}>›</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Paste OPML modal */}
+      <Modal visible={pasteVisible} animationType="slide" presentationStyle="pageSheet">
+        <View style={styles.modal}>
+          <Text style={styles.modalTitle}>Paste OPML</Text>
+          <Text style={styles.modalSubtitle}>
+            Paste the contents of an OPML file below.
+          </Text>
+          <ScrollView style={styles.pasteScroll} keyboardShouldPersistTaps="handled">
+            <TextInput
+              style={styles.pasteInput}
+              value={pasteText}
+              onChangeText={setPasteText}
+              placeholder={'<?xml version="1.0"?>\n<opml version="1.0">…'}
+              placeholderTextColor={COLORS.textSecondary}
+              multiline
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoFocus
+            />
+          </ScrollView>
+          <View style={styles.modalButtons}>
+            <TouchableOpacity
+              style={[styles.modalBtn, styles.cancelBtn]}
+              onPress={() => { setPasteVisible(false); setPasteText(''); }}
+            >
+              <Text style={styles.cancelBtnText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modalBtn, styles.confirmBtn, pasteLoading && { opacity: 0.5 }]}
+              onPress={onImportPaste}
+              disabled={pasteLoading || !pasteText.trim()}
+            >
+              {pasteLoading
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={styles.confirmBtnText}>Import</Text>}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -271,4 +366,44 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textSecondary,
   },
+  modal: {
+    flex: 1,
+    backgroundColor: COLORS.surface,
+    padding: 24,
+    paddingTop: 48,
+  },
+  modalTitle: {
+    fontFamily: FONTS.sansBold,
+    fontSize: 18,
+    color: COLORS.text,
+    marginBottom: 6,
+  },
+  modalSubtitle: {
+    fontFamily: FONTS.sans,
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    marginBottom: 16,
+  },
+  pasteScroll: {
+    flex: 1,
+    marginBottom: 16,
+  },
+  pasteInput: {
+    fontFamily: FONTS.mono,
+    fontSize: 12,
+    color: COLORS.text,
+    backgroundColor: COLORS.background,
+    borderRadius: 3,
+    padding: 12,
+    minHeight: 200,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.border,
+    textAlignVertical: 'top',
+  },
+  modalButtons: { flexDirection: 'row', gap: 12 },
+  modalBtn: { flex: 1, borderRadius: 3, paddingVertical: 13, alignItems: 'center' },
+  cancelBtn: { backgroundColor: COLORS.border },
+  cancelBtnText: { fontFamily: FONTS.sansMedium, fontSize: 14, color: COLORS.text },
+  confirmBtn: { backgroundColor: COLORS.accent },
+  confirmBtnText: { fontFamily: FONTS.sansBold, fontSize: 14, color: '#fff' },
 });
