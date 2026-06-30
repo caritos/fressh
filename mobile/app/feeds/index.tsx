@@ -7,7 +7,6 @@ import {
   Alert,
   TextInput,
   Modal,
-  RefreshControl,
   ActivityIndicator,
   SectionList,
 } from 'react-native';
@@ -267,9 +266,6 @@ export default function FeedsScreen() {
           }
           return null;
         }}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.accent} />
-        }
         contentContainerStyle={{ paddingBottom: TOOLBAR_HEIGHT + insets.bottom + 16 }}
       />
 
