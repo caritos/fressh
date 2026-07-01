@@ -231,7 +231,7 @@ export default function SettingsScreen() {
 
         <TouchableOpacity
           style={styles.row}
-          onPress={() => Linking.openURL('https://fressh.caritos.com/support')}
+          onPress={() => Linking.openURL('https://fressh.caritos.com/support').catch(() => Alert.alert('Unable to open link'))}
           activeOpacity={0.6}
         >
           <View style={styles.rowContent}>
@@ -244,7 +244,7 @@ export default function SettingsScreen() {
 
         <TouchableOpacity
           style={styles.row}
-          onPress={() => Linking.openURL('https://fressh.caritos.com/privacy')}
+          onPress={() => Linking.openURL('https://fressh.caritos.com/privacy').catch(() => Alert.alert('Unable to open link'))}
           activeOpacity={0.6}
         >
           <View style={styles.rowContent}>
