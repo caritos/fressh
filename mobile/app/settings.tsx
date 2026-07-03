@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Modal,
   TextInput,
   ScrollView,
+  Keyboard,
 } from 'react-native';
 import { Stack } from 'expo-router';
 import { Linking } from 'react-native';
@@ -41,6 +42,16 @@ export default function SettingsScreen() {
   const [pasteVisible, setPasteVisible] = useState(false);
   const [pasteText, setPasteText] = useState('');
   const [pasteLoading, setPasteLoading] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardWillShow', (e) => setKeyboardHeight(e.endCoordinates.height));
+    const hideSub = Keyboard.addListener('keyboardWillHide', () => setKeyboardHeight(0));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const onImportPaste = async () => {
     const xml = pasteText.trim();
@@ -176,7 +187,7 @@ export default function SettingsScreen() {
 
       {/* Paste OPML modal */}
       <Modal visible={pasteVisible} animationType="slide" presentationStyle="pageSheet">
-        <View style={styles.modal}>
+        <View style={[styles.modal, { paddingBottom: 24 + keyboardHeight }]}>
           <Text style={styles.modalTitle}>Paste OPML</Text>
           <Text style={styles.modalSubtitle}>
             Paste the contents of an OPML file below.
