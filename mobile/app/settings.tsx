@@ -13,7 +13,6 @@ import {
 import { Stack } from 'expo-router';
 import { Linking } from 'react-native';
 import Constants from 'expo-constants';
-import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { getDb } from '../src/db/database';
@@ -38,65 +37,10 @@ async function importOpmlXml(xml: string): Promise<{ added: number; skipped: num
 }
 
 export default function SettingsScreen() {
-  const [importProgress, setImportProgress] = useState<{ current: number; total: number } | null>(null);
   const [exporting, setExporting] = useState(false);
   const [pasteVisible, setPasteVisible] = useState(false);
   const [pasteText, setPasteText] = useState('');
   const [pasteLoading, setPasteLoading] = useState(false);
-
-  const onImport = async () => {
-    const picked = await DocumentPicker.getDocumentAsync({
-      type: ['text/xml', 'application/xml', 'public.xml', '*/*'],
-      copyToCacheDirectory: true,
-    });
-    if (picked.canceled) return;
-
-    let xml: string;
-    try {
-      xml = await FileSystem.readAsStringAsync(picked.assets[0].uri);
-    } catch {
-      Alert.alert('Error', 'Could not read the selected file.');
-      return;
-    }
-
-    let feeds: { url: string; title?: string; siteUrl?: string }[];
-    try {
-      feeds = parseOpml(xml);
-    } catch {
-      Alert.alert('Invalid file', "This doesn't look like a valid OPML file.");
-      return;
-    }
-
-    if (feeds.length === 0) {
-      Alert.alert('No feeds found', 'The OPML file contained no feed subscriptions.');
-      return;
-    }
-
-    const db = getDb();
-    let added = 0;
-    let skipped = 0;
-    let errors = 0;
-
-    setImportProgress({ current: 0, total: feeds.length });
-
-    for (let i = 0; i < feeds.length; i++) {
-      setImportProgress({ current: i + 1, total: feeds.length });
-      const feed = feeds[i];
-      try {
-        const existing = await getFeedByUrl(db, feed.url);
-        if (existing) { skipped++; continue; }
-        await upsertFeed(db, { url: feed.url, title: feed.title, site_url: feed.siteUrl });
-        added++;
-      } catch { errors++; }
-    }
-
-    setImportProgress(null);
-
-    const parts = [`Added ${added} feed${added === 1 ? '' : 's'}.`];
-    if (skipped > 0) parts.push(`${skipped} already in your list.`);
-    if (errors > 0) parts.push(`${errors} failed.`);
-    Alert.alert('Import complete', parts.join(' '));
-  };
 
   const onImportPaste = async () => {
     const xml = pasteText.trim();
@@ -152,23 +96,8 @@ export default function SettingsScreen() {
       <View style={styles.section}>
         <TouchableOpacity
           style={styles.row}
-          onPress={onImport}
-          disabled={importProgress !== null || exporting}
-          activeOpacity={0.6}
-        >
-          <View style={styles.rowContent}>
-            <Text style={styles.rowTitle}>Import OPML</Text>
-            <Text style={styles.rowSubtitle}>Add feeds from an .opml file</Text>
-          </View>
-          <Text style={styles.chevron}>›</Text>
-        </TouchableOpacity>
-
-        <View style={styles.divider} />
-
-        <TouchableOpacity
-          style={styles.row}
           onPress={() => setPasteVisible(true)}
-          disabled={importProgress !== null || exporting}
+          disabled={exporting}
           activeOpacity={0.6}
         >
           <View style={styles.rowContent}>
@@ -183,7 +112,7 @@ export default function SettingsScreen() {
         <TouchableOpacity
           style={styles.row}
           onPress={onExport}
-          disabled={exporting || importProgress !== null}
+          disabled={exporting}
           activeOpacity={0.6}
         >
           <View style={styles.rowContent}>
@@ -195,15 +124,6 @@ export default function SettingsScreen() {
             : <Text style={styles.chevron}>›</Text>}
         </TouchableOpacity>
       </View>
-
-      {importProgress && (
-        <View style={styles.progress}>
-          <ActivityIndicator color={COLORS.accent} />
-          <Text style={styles.progressText}>
-            Adding {importProgress.current} of {importProgress.total} feeds…
-          </Text>
-        </View>
-      )}
 
       <Text style={styles.sectionLabel}>About</Text>
 
@@ -353,18 +273,6 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     backgroundColor: COLORS.border,
     marginLeft: 16,
-  },
-  progress: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingTop: 24,
-  },
-  progressText: {
-    fontFamily: FONTS.sans,
-    fontSize: 14,
-    color: COLORS.textSecondary,
   },
   modal: {
     flex: 1,
