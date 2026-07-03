@@ -47,9 +47,13 @@ export default function RootLayout() {
 
     async function init() {
       try {
+        // iOS can reassign the app's container UUID across reinstalls while still
+        // carrying over Documents' contents, so a previously persisted absolute
+        // path can point at a container that no longer exists. Always recompute
+        // the current path and re-save if it drifted from what's on disk.
+        const dbPath = appStoragePath();
         let config = await loadDbConfig();
-        if (!config) {
-          const dbPath = appStoragePath();
+        if (!config || config.databasePath !== dbPath) {
           config = { databasePath: dbPath };
           await saveDbConfig(config);
         }
