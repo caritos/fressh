@@ -25,6 +25,7 @@ import Row from '../../src/components/ui/Row';
 import SectionHeader from '../../src/components/ui/SectionHeader';
 
 const SMART_FEEDS = [
+  { id: 'all', label: 'All' },
   { id: 'starred', label: 'Starred' },
   { id: 'unread', label: 'All Unread' },
   { id: 'today', label: 'Today' },
