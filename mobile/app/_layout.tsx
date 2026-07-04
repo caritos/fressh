@@ -13,6 +13,7 @@ import { initDb, getDb } from '../src/db/database';
 import { loadDbConfig, saveDbConfig, appStoragePath } from '../src/db/config';
 import { registerBackgroundFetch } from '../src/tasks/background';
 import { refresh } from '../src/fetcher/refresh';
+import { getSetting, deleteExpiredReadArticles } from '../src/db/queries';
 import { COLORS, FONTS } from '../src/constants';
 
 SplashScreen.preventAutoHideAsync();
@@ -36,6 +37,9 @@ export default function RootLayout() {
 
   const startApp = useCallback(async (dbPath: string) => {
     await initDb(dbPath);
+    const db = getDb();
+    const retentionDays = Number((await getSetting(db, 'retention_days')) ?? '90');
+    await deleteExpiredReadArticles(db, retentionDays);
     await registerBackgroundFetch();
     lastFetchAt.current = Date.now();
     refresh().catch(console.error);
