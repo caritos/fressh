@@ -30,6 +30,7 @@ import { FONTS, COLORS } from '../../../src/constants';
 import Row from '../../../src/components/ui/Row';
 
 const SMART_LABELS: Record<string, string> = {
+  all: 'All',
   unread: 'All Unread',
   starred: 'Starred',
   today: 'Today',
@@ -54,7 +55,7 @@ export default function ArticleListScreen() {
   const { feedId: rawId } = useLocalSearchParams<{ feedId: string }>();
   if (Array.isArray(rawId)) return null;
   const feedId =
-    rawId === 'unread' || rawId === 'starred' || rawId === 'today'
+    rawId === 'unread' || rawId === 'starred' || rawId === 'today' || rawId === 'all'
       ? rawId
       : Number(rawId);
 
@@ -103,6 +104,8 @@ export default function ArticleListScreen() {
           await markAllUnreadRead(db);
         } else if (feedId === 'today') {
           await markAllTodayRead(db);
+        } else if (feedId === 'all') {
+          await markAllUnreadRead(db);
         } else {
           return;
         }
@@ -192,7 +195,7 @@ export default function ArticleListScreen() {
     );
   }, [articles, feedId, rawId]);
 
-  const hasMarkAllRead = typeof feedId === 'number' || feedId === 'unread' || feedId === 'today';
+  const hasMarkAllRead = typeof feedId === 'number' || feedId === 'unread' || feedId === 'today' || feedId === 'all';
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
