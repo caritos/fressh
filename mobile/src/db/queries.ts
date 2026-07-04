@@ -167,6 +167,10 @@ export async function markAllUnreadRead(db: SQLiteDatabase): Promise<void> {
   await db.runAsync(`UPDATE articles SET read = 1 WHERE read = 0`);
 }
 
+export async function markAllTodayRead(db: SQLiteDatabase): Promise<void> {
+  await db.runAsync(`UPDATE articles SET read = 1 WHERE read = 0 AND date(published_at) = date('now')`);
+}
+
 export async function toggleStar(db: SQLiteDatabase, id: number): Promise<void> {
   await db.runAsync(`UPDATE articles SET starred = 1 - starred WHERE id = ?`, [id]);
 }

@@ -20,6 +20,7 @@ import {
   markUnread,
   markAllRead,
   markAllUnreadRead,
+  markAllTodayRead,
   toggleStar,
   getFeeds,
   type ArticleRow,
@@ -100,6 +101,8 @@ export default function ArticleListScreen() {
           await markAllRead(db, feedId);
         } else if (feedId === 'unread') {
           await markAllUnreadRead(db);
+        } else if (feedId === 'today') {
+          await markAllTodayRead(db);
         } else {
           return;
         }
@@ -189,7 +192,7 @@ export default function ArticleListScreen() {
     );
   }, [articles, feedId, rawId]);
 
-  const hasMarkAllRead = typeof feedId === 'number' || feedId === 'unread';
+  const hasMarkAllRead = typeof feedId === 'number' || feedId === 'unread' || feedId === 'today';
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
