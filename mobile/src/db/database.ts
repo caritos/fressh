@@ -5,6 +5,7 @@ const SCHEMA_VERSION = 2;
 
 let _db: SQLite.SQLiteDatabase | null = null;
 let _lastPath: string | undefined;
+let _initPromise: Promise<void> | null = null;
 
 export function getDb(): SQLite.SQLiteDatabase {
   if (!_db) throw new Error('Database not initialized — call initDb() first');
@@ -12,19 +13,34 @@ export function getDb(): SQLite.SQLiteDatabase {
 }
 
 export async function initDb(absolutePath?: string): Promise<void> {
-  if (_db) return;
-  _lastPath = absolutePath;
-  if (absolutePath) {
-    const lastSlash = absolutePath.lastIndexOf('/');
-    const directory = absolutePath.slice(0, lastSlash);
-    const filename = absolutePath.slice(lastSlash + 1);
-    _db = await SQLite.openDatabaseAsync(filename, {}, directory);
-  } else {
-    _db = await SQLite.openDatabaseAsync('fressh.db');
-  }
-  await _db.execAsync('PRAGMA journal_mode = WAL;');
-  await _db.execAsync('PRAGMA foreign_keys = ON;');
-  await _migrate(_db);
+  // Memoize the in-flight promise, not just the `_db` handle: `_db` is
+  // assigned before `_migrate()` finishes, so a concurrent caller checking
+  // only `_db` can race ahead and query tables the migration hasn't
+  // created yet. Awaiting the same promise closes that window.
+  if (_initPromise) return _initPromise;
+  _initPromise = (async () => {
+    try {
+      _lastPath = absolutePath;
+      if (absolutePath) {
+        const lastSlash = absolutePath.lastIndexOf('/');
+        const directory = absolutePath.slice(0, lastSlash);
+        const filename = absolutePath.slice(lastSlash + 1);
+        _db = await SQLite.openDatabaseAsync(filename, {}, directory);
+      } else {
+        _db = await SQLite.openDatabaseAsync('fressh.db');
+      }
+      await _db.execAsync('PRAGMA journal_mode = WAL;');
+      await _db.execAsync('PRAGMA foreign_keys = ON;');
+      await _migrate(_db);
+    } catch (e) {
+      // Let a failed init be retried from scratch instead of permanently
+      // caching a rejected promise.
+      _db = null;
+      _initPromise = null;
+      throw e;
+    }
+  })();
+  return _initPromise;
 }
 
 async function _migrate(db: SQLite.SQLiteDatabase): Promise<void> {
@@ -46,5 +62,18 @@ async function _migrate(db: SQLite.SQLiteDatabase): Promise<void> {
     }
     await db.runAsync(`INSERT OR IGNORE INTO settings (key, value) VALUES ('retention_days', '90')`);
     await db.runAsync(`INSERT OR REPLACE INTO schema_version (version) VALUES (?)`, [SCHEMA_VERSION]);
+  }
+  // Self-heal: a schema_version row can outpace what was actually applied if
+  // a past run's migration was ever interrupted after bumping the version
+  // (e.g. iOS carries a container's Documents contents across a reinstall,
+  // so a corrupted version marker persists indefinitely otherwise). Verify
+  // the objects this version claims to have created actually exist, rather
+  // than trusting the counter alone.
+  await db.execAsync(CREATE_SETTINGS);
+  await db.runAsync(`INSERT OR IGNORE INTO settings (key, value) VALUES ('retention_days', '90')`);
+  const columns = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(articles)`);
+  if (!columns.some((c) => c.name === 'read_at')) {
+    await db.execAsync(`ALTER TABLE articles ADD COLUMN read_at DATETIME`);
+    await db.execAsync(`UPDATE articles SET read_at = datetime('now') WHERE read = 1 AND read_at IS NULL`);
   }
 }
