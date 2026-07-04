@@ -58,7 +58,7 @@ export default function FeedsScreen() {
       'SELECT COUNT(*) as count FROM articles WHERE read = 0'
     );
     const todayRow = await db.getFirstAsync<{ count: number }>(
-      "SELECT COUNT(*) as count FROM articles WHERE date(published_at) = date('now')"
+      "SELECT COUNT(*) as count FROM articles WHERE read = 0 AND date(published_at) = date('now')"
     );
 
     setSmartCounts({
