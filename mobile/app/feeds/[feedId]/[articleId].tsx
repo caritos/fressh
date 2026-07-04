@@ -69,7 +69,7 @@ export default function ArticleReaderScreen() {
     try {
       const db = getDb();
       const feedIdParam =
-        feedId === 'unread' || feedId === 'starred' || feedId === 'today'
+        feedId === 'unread' || feedId === 'starred' || feedId === 'today' || feedId === 'all'
           ? feedId
           : Number(feedId);
       const list = await getArticles(db, feedIdParam);
