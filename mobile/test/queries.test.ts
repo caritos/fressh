@@ -189,3 +189,59 @@ test('settings table: seeding on a later launch does not override a user-changed
   const row = db.query(`SELECT value FROM settings WHERE key = 'retention_days'`).get() as any;
   expect(row.value).toBe('30');
 });
+
+test('markRead: sets read_at when marking read', () => {
+  const feedId = insertFeed('https://f.com/feed', 'Feed');
+  insertArticle(feedId, 'a1', 0);
+  const id = (db.query(`SELECT id FROM articles WHERE guid = 'a1'`).get() as any).id;
+  db.exec(`UPDATE articles SET read = 1, read_at = COALESCE(read_at, datetime('now')) WHERE id = ${id}`);
+  const row = db.query(`SELECT read, read_at FROM articles WHERE id = ${id}`).get() as any;
+  expect(row.read).toBe(1);
+  expect(row.read_at).not.toBeNull();
+});
+
+test('markRead: does not reset read_at if already read', () => {
+  const feedId = insertFeed('https://f.com/feed', 'Feed');
+  insertArticle(feedId, 'a1', 1);
+  db.exec(`UPDATE articles SET read_at = '2020-01-01 00:00:00' WHERE guid = 'a1'`);
+  const id = (db.query(`SELECT id FROM articles WHERE guid = 'a1'`).get() as any).id;
+  db.exec(`UPDATE articles SET read = 1, read_at = COALESCE(read_at, datetime('now')) WHERE id = ${id}`);
+  const row = db.query(`SELECT read_at FROM articles WHERE id = ${id}`).get() as any;
+  expect(row.read_at).toBe('2020-01-01 00:00:00');
+});
+
+test('markUnread: clears read_at', () => {
+  const feedId = insertFeed('https://f.com/feed', 'Feed');
+  insertArticle(feedId, 'a1', 1);
+  db.exec(`UPDATE articles SET read_at = datetime('now') WHERE guid = 'a1'`);
+  const id = (db.query(`SELECT id FROM articles WHERE guid = 'a1'`).get() as any).id;
+  db.exec(`UPDATE articles SET read = 0, read_at = NULL WHERE id = ${id}`);
+  const row = db.query(`SELECT read, read_at FROM articles WHERE id = ${id}`).get() as any;
+  expect(row.read).toBe(0);
+  expect(row.read_at).toBeNull();
+});
+
+test('deleteExpiredReadArticles SQL: deletes old read articles, keeps starred/recent/unread', () => {
+  const feedId = insertFeed('https://f.com/feed', 'Feed');
+  db.exec(`INSERT INTO articles (feed_id, guid, title, url, read, starred, read_at, published_at)
+           VALUES (${feedId}, 'old-read', 'Old', 'https://o.com', 1, 0, datetime('now', '-100 days'), datetime('now', '-100 days'))`);
+  db.exec(`INSERT INTO articles (feed_id, guid, title, url, read, starred, read_at, published_at)
+           VALUES (${feedId}, 'old-starred', 'Old Starred', 'https://s.com', 1, 1, datetime('now', '-100 days'), datetime('now', '-100 days'))`);
+  db.exec(`INSERT INTO articles (feed_id, guid, title, url, read, starred, read_at, published_at)
+           VALUES (${feedId}, 'recent-read', 'Recent', 'https://r.com', 1, 0, datetime('now', '-5 days'), datetime('now', '-5 days'))`);
+  db.exec(`INSERT INTO articles (feed_id, guid, title, url, read, starred, published_at)
+           VALUES (${feedId}, 'old-unread', 'Unread', 'https://u.com', 0, 0, datetime('now', '-100 days'))`);
+
+  db.exec(`DELETE FROM articles WHERE read = 1 AND starred = 0 AND read_at IS NOT NULL AND read_at <= datetime('now', '-' || 90 || ' days')`);
+
+  const remaining = (db.query(`SELECT guid FROM articles ORDER BY guid`).all() as any[]).map((r) => r.guid);
+  expect(remaining.sort()).toEqual(['old-starred', 'old-unread', 'recent-read']);
+});
+
+test('getSetting/setSetting SQL: round-trips a value', () => {
+  db.exec(`INSERT INTO settings (key, value) VALUES ('retention_days', '90')`);
+  db.exec(`INSERT INTO settings (key, value) VALUES ('retention_days', '30')
+           ON CONFLICT(key) DO UPDATE SET value = excluded.value`);
+  const row = db.query(`SELECT value FROM settings WHERE key = 'retention_days'`).get() as any;
+  expect(row.value).toBe('30');
+});

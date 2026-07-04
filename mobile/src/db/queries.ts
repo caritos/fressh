@@ -27,6 +27,7 @@ export interface ArticleRow {
   published_at: string | null;
   fetched_at: string;
   read: number;
+  read_at: string | null;
   starred: number;
   feed_title: string | null;
   feed_site_url: string | null;
@@ -160,23 +161,23 @@ export async function updateFeedFetchMeta(
 }
 
 export async function markRead(db: SQLiteDatabase, id: number): Promise<void> {
-  await db.runAsync(`UPDATE articles SET read = 1 WHERE id = ?`, [id]);
+  await db.runAsync(`UPDATE articles SET read = 1, read_at = COALESCE(read_at, datetime('now')) WHERE id = ?`, [id]);
 }
 
 export async function markUnread(db: SQLiteDatabase, id: number): Promise<void> {
-  await db.runAsync(`UPDATE articles SET read = 0 WHERE id = ?`, [id]);
+  await db.runAsync(`UPDATE articles SET read = 0, read_at = NULL WHERE id = ?`, [id]);
 }
 
 export async function markAllRead(db: SQLiteDatabase, feedId: number): Promise<void> {
-  await db.runAsync(`UPDATE articles SET read = 1 WHERE feed_id = ?`, [feedId]);
+  await db.runAsync(`UPDATE articles SET read = 1, read_at = COALESCE(read_at, datetime('now')) WHERE feed_id = ?`, [feedId]);
 }
 
 export async function markAllUnreadRead(db: SQLiteDatabase): Promise<void> {
-  await db.runAsync(`UPDATE articles SET read = 1 WHERE read = 0`);
+  await db.runAsync(`UPDATE articles SET read = 1, read_at = COALESCE(read_at, datetime('now')) WHERE read = 0`);
 }
 
 export async function markAllTodayRead(db: SQLiteDatabase): Promise<void> {
-  await db.runAsync(`UPDATE articles SET read = 1 WHERE read = 0 AND date(published_at) = date('now')`);
+  await db.runAsync(`UPDATE articles SET read = 1, read_at = COALESCE(read_at, datetime('now')) WHERE read = 0 AND date(published_at) = date('now')`);
 }
 
 export async function toggleStar(db: SQLiteDatabase, id: number): Promise<void> {
@@ -192,4 +193,26 @@ export async function getTotalUnreadCount(db: SQLiteDatabase): Promise<number> {
     `SELECT COUNT(*) as count FROM articles WHERE read = 0`
   );
   return row?.count ?? 0;
+}
+
+export async function getSetting(db: SQLiteDatabase, key: string): Promise<string | null> {
+  const row = await db.getFirstAsync<{ value: string }>(
+    `SELECT value FROM settings WHERE key = ?`,
+    [key]
+  );
+  return row?.value ?? null;
+}
+
+export async function setSetting(db: SQLiteDatabase, key: string, value: string): Promise<void> {
+  await db.runAsync(
+    `INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+    [key, value]
+  );
+}
+
+export async function deleteExpiredReadArticles(db: SQLiteDatabase, retentionDays: number): Promise<void> {
+  await db.runAsync(
+    `DELETE FROM articles WHERE read = 1 AND starred = 0 AND read_at IS NOT NULL AND read_at <= datetime('now', '-' || ? || ' days')`,
+    [retentionDays]
+  );
 }
