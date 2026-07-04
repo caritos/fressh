@@ -17,7 +17,7 @@ import Constants from 'expo-constants';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { getDb } from '../src/db/database';
-import { getFeeds, upsertFeed, getFeedByUrl } from '../src/db/queries';
+import { getFeeds, upsertFeed, getFeedByUrl, getSetting, setSetting } from '../src/db/queries';
 import { parseOpml, buildOpml } from '../src/fetcher/opml';
 import { FONTS, COLORS } from '../src/constants';
 
@@ -43,6 +43,7 @@ export default function SettingsScreen() {
   const [pasteText, setPasteText] = useState('');
   const [pasteLoading, setPasteLoading] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [retentionDays, setRetentionDays] = useState(90);
 
   useEffect(() => {
     const showSub = Keyboard.addListener('keyboardWillShow', (e) => setKeyboardHeight(e.endCoordinates.height));
@@ -52,6 +53,36 @@ export default function SettingsScreen() {
       hideSub.remove();
     };
   }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const db = getDb();
+        const value = await getSetting(db, 'retention_days');
+        setRetentionDays(Number(value ?? '90'));
+      } catch (e) {
+        console.error('Settings load error:', e);
+      }
+    })();
+  }, []);
+
+  const onChangeRetention = () => {
+    Alert.alert('Delete read articles after', undefined, [
+      { text: '30 days', onPress: () => saveRetention(30) },
+      { text: '90 days', onPress: () => saveRetention(90) },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const saveRetention = async (days: number) => {
+    try {
+      const db = getDb();
+      await setSetting(db, 'retention_days', String(days));
+      setRetentionDays(days);
+    } catch {
+      Alert.alert('Error', 'Failed to save setting.');
+    }
+  };
 
   const onImportPaste = async () => {
     const xml = pasteText.trim();
@@ -133,6 +164,22 @@ export default function SettingsScreen() {
           {exporting
             ? <ActivityIndicator color={COLORS.accent} />
             : <Text style={styles.chevron}>›</Text>}
+        </TouchableOpacity>
+      </View>
+
+      <Text style={styles.sectionLabel}>Reading</Text>
+
+      <View style={styles.section}>
+        <TouchableOpacity
+          style={styles.row}
+          onPress={onChangeRetention}
+          activeOpacity={0.6}
+        >
+          <View style={styles.rowContent}>
+            <Text style={styles.rowTitle}>Delete read articles after</Text>
+          </View>
+          <Text style={styles.rowVersion}>{retentionDays} days</Text>
+          <Text style={styles.chevron}>›</Text>
         </TouchableOpacity>
       </View>
 
