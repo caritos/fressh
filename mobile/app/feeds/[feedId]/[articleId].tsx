@@ -6,7 +6,7 @@ import { useWindowDimensions } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import YoutubePlayer from 'react-native-youtube-iframe';
 import { getDb } from '../../../src/db/database';
-import { getArticle, toggleStar, getArticles, type ArticleRow } from '../../../src/db/queries';
+import { getArticle, markRead, toggleStar, getArticles, type ArticleRow } from '../../../src/db/queries';
 import { FONTS, COLORS } from '../../../src/constants';
 import NavBar from '../../../src/components/ui/NavBar';
 
@@ -57,6 +57,7 @@ export default function ArticleReaderScreen() {
   const loadArticle = useCallback(async () => {
     try {
       const db = getDb();
+      await markRead(db, Number(articleId));
       const a = await getArticle(db, Number(articleId));
       setArticle(a);
     } catch (e) {
