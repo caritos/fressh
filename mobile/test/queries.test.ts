@@ -1,6 +1,6 @@
 import { Database } from 'bun:sqlite';
 import { expect, test, beforeEach, afterEach } from 'bun:test';
-import { CREATE_FEEDS, CREATE_ARTICLES, CREATE_INDEXES, CREATE_SCHEMA_VERSION } from '../src/db/schema';
+import { CREATE_FEEDS, CREATE_ARTICLES, CREATE_INDEXES, CREATE_SCHEMA_VERSION, CREATE_SETTINGS } from '../src/db/schema';
 
 // Synchronous bun:sqlite wrapper to validate the same SQL used in queries.ts
 let db: Database;
@@ -11,6 +11,7 @@ function setup() {
   db.exec(CREATE_SCHEMA_VERSION);
   db.exec(CREATE_FEEDS);
   db.exec(CREATE_ARTICLES);
+  db.exec(CREATE_SETTINGS);
   for (const idx of CREATE_INDEXES) db.exec(idx);
 }
 
@@ -145,4 +146,46 @@ test('ARTICLES_ALL: returns every article regardless of read state, newest first
   expect(rows).toHaveLength(2);
   expect(rows[0].guid).toBe('new-unread');
   expect(rows[1].guid).toBe('old-read');
+});
+
+test('CREATE_ARTICLES: read_at column defaults to NULL', () => {
+  const feedId = insertFeed('https://f.com/feed', 'Feed');
+  insertArticle(feedId, 'a1', 0);
+  const row = db.query(`SELECT read_at FROM articles WHERE guid = 'a1'`).get() as any;
+  expect(row.read_at).toBeNull();
+});
+
+test('migration backfill: sets read_at for pre-existing read articles with NULL read_at', () => {
+  const feedId = insertFeed('https://f.com/feed', 'Feed');
+  insertArticle(feedId, 'already-read', 1);
+  insertArticle(feedId, 'still-unread', 0);
+  db.exec(`UPDATE articles SET read_at = datetime('now') WHERE read = 1 AND read_at IS NULL`);
+  const read = db.query(`SELECT read_at FROM articles WHERE guid = 'already-read'`).get() as any;
+  const unread = db.query(`SELECT read_at FROM articles WHERE guid = 'still-unread'`).get() as any;
+  expect(read.read_at).not.toBeNull();
+  expect(unread.read_at).toBeNull();
+});
+
+test('migration backfill: does not overwrite an existing read_at', () => {
+  const feedId = insertFeed('https://f.com/feed', 'Feed');
+  insertArticle(feedId, 'a1', 1);
+  db.exec(`UPDATE articles SET read_at = '2020-01-01 00:00:00' WHERE guid = 'a1'`);
+  db.exec(`UPDATE articles SET read_at = datetime('now') WHERE read = 1 AND read_at IS NULL`);
+  const row = db.query(`SELECT read_at FROM articles WHERE guid = 'a1'`).get() as any;
+  expect(row.read_at).toBe('2020-01-01 00:00:00');
+});
+
+test('settings table: default retention_days seeds once and is idempotent', () => {
+  db.exec(`INSERT OR IGNORE INTO settings (key, value) VALUES ('retention_days', '90')`);
+  db.exec(`INSERT OR IGNORE INTO settings (key, value) VALUES ('retention_days', '90')`);
+  const row = db.query(`SELECT value FROM settings WHERE key = 'retention_days'`).get() as any;
+  expect(row.value).toBe('90');
+});
+
+test('settings table: seeding on a later launch does not override a user-changed value', () => {
+  db.exec(`INSERT OR IGNORE INTO settings (key, value) VALUES ('retention_days', '90')`);
+  db.exec(`UPDATE settings SET value = '30' WHERE key = 'retention_days'`);
+  db.exec(`INSERT OR IGNORE INTO settings (key, value) VALUES ('retention_days', '90')`);
+  const row = db.query(`SELECT value FROM settings WHERE key = 'retention_days'`).get() as any;
+  expect(row.value).toBe('30');
 });

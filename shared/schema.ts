@@ -33,6 +33,7 @@ export const CREATE_ARTICLES = `
     published_at DATETIME,
     fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     read INTEGER DEFAULT 0,
+    read_at DATETIME,
     starred INTEGER DEFAULT 0,
     FOREIGN KEY (feed_id) REFERENCES feeds(id) ON DELETE CASCADE,
     UNIQUE(feed_id, guid)
@@ -45,3 +46,10 @@ export const CREATE_INDEXES = [
   `CREATE INDEX IF NOT EXISTS idx_articles_published_at ON articles(published_at DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_articles_guid ON articles(guid)`,
 ];
+
+export const CREATE_SETTINGS = `
+  CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT
+  )
+`;
