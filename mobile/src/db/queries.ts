@@ -73,17 +73,25 @@ const ARTICLES_TODAY = `
   ORDER BY a.published_at DESC
 `;
 
+const ARTICLES_ALL = `
+  SELECT a.*, f.title as feed_title, f.site_url as feed_site_url
+  FROM articles a
+  JOIN feeds f ON a.feed_id = f.id
+  ORDER BY a.published_at DESC
+`;
+
 export async function getFeeds(db: SQLiteDatabase): Promise<FeedRow[]> {
   return db.getAllAsync<FeedRow>(FEEDS_WITH_UNREAD);
 }
 
 export async function getArticles(
   db: SQLiteDatabase,
-  feedId: number | 'unread' | 'starred' | 'today'
+  feedId: number | 'unread' | 'starred' | 'today' | 'all'
 ): Promise<ArticleRow[]> {
   if (feedId === 'unread') return db.getAllAsync<ArticleRow>(ARTICLES_UNREAD);
   if (feedId === 'starred') return db.getAllAsync<ArticleRow>(ARTICLES_STARRED);
   if (feedId === 'today') return db.getAllAsync<ArticleRow>(ARTICLES_TODAY);
+  if (feedId === 'all') return db.getAllAsync<ArticleRow>(ARTICLES_ALL);
   return db.getAllAsync<ArticleRow>(ARTICLES_BY_FEED, [feedId]);
 }
 

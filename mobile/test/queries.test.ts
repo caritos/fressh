@@ -130,3 +130,19 @@ test('ARTICLES_TODAY: only returns articles with today date', () => {
   expect(rows).toHaveLength(1);
   expect((rows[0] as any).guid).toBe('today');
 });
+
+test('ARTICLES_ALL: returns every article regardless of read state, newest first', () => {
+  const feedId = insertFeed('https://f.com/feed', 'Feed');
+  db.exec(`INSERT INTO articles (feed_id, guid, title, url, read, published_at)
+           VALUES (${feedId}, 'old-read', 'Old Read', 'https://o.com', 1, '2020-01-01 00:00:00')`);
+  db.exec(`INSERT INTO articles (feed_id, guid, title, url, read, published_at)
+           VALUES (${feedId}, 'new-unread', 'New Unread', 'https://n.com', 0, '2025-06-01 00:00:00')`);
+  const rows = db.query(
+    `SELECT a.*, f.title as feed_title, f.site_url as feed_site_url
+     FROM articles a JOIN feeds f ON a.feed_id = f.id
+     ORDER BY a.published_at DESC`
+  ).all() as any[];
+  expect(rows).toHaveLength(2);
+  expect(rows[0].guid).toBe('new-unread');
+  expect(rows[1].guid).toBe('old-read');
+});
