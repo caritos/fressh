@@ -28,6 +28,7 @@ import {
 import { refresh } from '../../../src/fetcher/refresh';
 import { FONTS, COLORS } from '../../../src/constants';
 import Row from '../../../src/components/ui/Row';
+import { setReaderSession } from '../../../src/reader/session';
 
 const SMART_LABELS: Record<string, string> = {
   all: 'All',
@@ -128,6 +129,7 @@ export default function ArticleListScreen() {
     } catch (e) {
       console.error('markRead error:', e);
     }
+    setReaderSession(rawId, articles.map((a) => a.id));
     router.push(`/feeds/${rawId}/${article.id}`);
   };
 

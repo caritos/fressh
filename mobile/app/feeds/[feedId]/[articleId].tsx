@@ -6,11 +6,12 @@ import { useWindowDimensions } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import YoutubePlayer from 'react-native-youtube-iframe';
 import { getDb } from '../../../src/db/database';
-import { getArticle, markRead, toggleStar, getArticles, type ArticleRow } from '../../../src/db/queries';
+import { getArticle, markRead, toggleStar, getArticles, getArticlesByIds, type ArticleRow } from '../../../src/db/queries';
 import { FONTS, COLORS } from '../../../src/constants';
 import NavBar from '../../../src/components/ui/NavBar';
 import { getYouTubeVideoId } from '../../../src/fetcher/youtube';
 import { getRemainingUnreadAhead } from '../../../src/reader/remainingUnread';
+import { getReaderSession } from '../../../src/reader/session';
 
 function formatDate(iso: string | null): string {
   if (!iso) return '';
@@ -61,6 +62,11 @@ export default function ArticleReaderScreen() {
   const loadList = useCallback(async () => {
     try {
       const db = getDb();
+      const sessionIds = getReaderSession(feedId);
+      if (sessionIds) {
+        setArticleList(await getArticlesByIds(db, sessionIds));
+        return;
+      }
       const feedIdParam =
         feedId === 'unread' || feedId === 'starred' || feedId === 'today' || feedId === 'all'
           ? feedId
