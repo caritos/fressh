@@ -155,6 +155,14 @@ test('CREATE_ARTICLES: read_at column defaults to NULL', () => {
   expect(row.read_at).toBeNull();
 });
 
+test('CREATE_ARTICLES: video_width and video_height default to NULL', () => {
+  const feedId = insertFeed('https://f.com/feed', 'Feed');
+  insertArticle(feedId, 'a1', 0);
+  const row = db.query(`SELECT video_width, video_height FROM articles WHERE guid = 'a1'`).get() as any;
+  expect(row.video_width).toBeNull();
+  expect(row.video_height).toBeNull();
+});
+
 test('migration backfill: sets read_at for pre-existing read articles with NULL read_at', () => {
   const feedId = insertFeed('https://f.com/feed', 'Feed');
   insertArticle(feedId, 'already-read', 1);
