@@ -1,6 +1,7 @@
 import { Database } from 'bun:sqlite';
 import { expect, test, beforeEach, afterEach } from 'bun:test';
 import { CREATE_FEEDS, CREATE_ARTICLES, CREATE_INDEXES, CREATE_SCHEMA_VERSION, CREATE_SETTINGS } from '../src/db/schema';
+import { getArticlesByIds, type ArticleRow } from '../src/db/queries';
 
 // Synchronous bun:sqlite wrapper to validate the same SQL used in queries.ts
 let db: Database;
@@ -311,4 +312,42 @@ test('insertArticles SQL: INSERT OR IGNORE reports which rows actually inserted'
 
   expect(first.changes).toBe(1);
   expect(second.changes).toBe(0);
+});
+
+function fakeArticle(id: number, read: number): ArticleRow {
+  return {
+    id, feed_id: 1, guid: `g${id}`, title: `Title ${id}`, url: null, author: null,
+    content_html: null, content_text: null, summary: null, published_at: null,
+    fetched_at: '', read, read_at: null, starred: 0, video_width: null, video_height: null,
+    feed_title: 'Feed', feed_site_url: null,
+  };
+}
+
+test('getArticlesByIds: returns rows in the requested id order, not query order', async () => {
+  const rows = [fakeArticle(1, 0), fakeArticle(2, 1), fakeArticle(3, 0)];
+  const fakeDb = { getAllAsync: async () => rows } as any;
+  const result = await getArticlesByIds(fakeDb, [3, 1, 2]);
+  expect(result.map((r) => r.id)).toEqual([3, 1, 2]);
+});
+
+test('getArticlesByIds: silently omits ids not present in the result set', async () => {
+  const rows = [fakeArticle(1, 0)];
+  const fakeDb = { getAllAsync: async () => rows } as any;
+  const result = await getArticlesByIds(fakeDb, [1, 999]);
+  expect(result.map((r) => r.id)).toEqual([1]);
+});
+
+test('getArticlesByIds: empty ids array returns empty array without querying', async () => {
+  let called = false;
+  const fakeDb = { getAllAsync: async () => { called = true; return []; } } as any;
+  const result = await getArticlesByIds(fakeDb, []);
+  expect(result).toEqual([]);
+  expect(called).toBe(false);
+});
+
+test('getArticlesByIds: reflects live read state from the query result', async () => {
+  const rows = [fakeArticle(5, 1)];
+  const fakeDb = { getAllAsync: async () => rows } as any;
+  const result = await getArticlesByIds(fakeDb, [5]);
+  expect(result[0].read).toBe(1);
 });

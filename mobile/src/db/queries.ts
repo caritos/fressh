@@ -105,6 +105,20 @@ export async function getArticle(db: SQLiteDatabase, id: number): Promise<Articl
   );
 }
 
+export async function getArticlesByIds(db: SQLiteDatabase, ids: number[]): Promise<ArticleRow[]> {
+  if (ids.length === 0) return [];
+  const placeholders = ids.map(() => '?').join(',');
+  const rows = await db.getAllAsync<ArticleRow>(
+    `SELECT a.*, f.title as feed_title, f.site_url as feed_site_url
+     FROM articles a
+     JOIN feeds f ON a.feed_id = f.id
+     WHERE a.id IN (${placeholders})`,
+    ids
+  );
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  return ids.map((id) => byId.get(id)).filter((r): r is ArticleRow => r != null);
+}
+
 export async function upsertFeed(
   db: SQLiteDatabase,
   feed: { url: string; title?: string | null; site_url?: string | null }
