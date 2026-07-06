@@ -253,3 +253,36 @@ test('getSetting/setSetting SQL: round-trips a value', () => {
   const row = db.query(`SELECT value FROM settings WHERE key = 'retention_days'`).get() as any;
   expect(row.value).toBe('30');
 });
+
+test('migration: ALTER TABLE adds video_width/video_height to a pre-existing v2 table', () => {
+  // Simulate a v2 install: articles table without the new columns.
+  db.exec('DROP TABLE articles');
+  db.exec(`
+    CREATE TABLE articles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      feed_id INTEGER NOT NULL,
+      guid TEXT NOT NULL,
+      title TEXT,
+      url TEXT,
+      author TEXT,
+      content_html TEXT,
+      content_text TEXT,
+      summary TEXT,
+      published_at DATETIME,
+      fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      read INTEGER DEFAULT 0,
+      read_at DATETIME,
+      starred INTEGER DEFAULT 0,
+      UNIQUE(feed_id, guid)
+    )
+  `);
+  const feedId = insertFeed('https://f.com/feed', 'Feed');
+  insertArticle(feedId, 'a1', 0);
+
+  db.exec(`ALTER TABLE articles ADD COLUMN video_width INTEGER`);
+  db.exec(`ALTER TABLE articles ADD COLUMN video_height INTEGER`);
+
+  const row = db.query(`SELECT video_width, video_height FROM articles WHERE guid = 'a1'`).get() as any;
+  expect(row.video_width).toBeNull();
+  expect(row.video_height).toBeNull();
+});

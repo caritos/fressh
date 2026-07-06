@@ -1,7 +1,7 @@
 import * as SQLite from 'expo-sqlite';
 import { CREATE_SCHEMA_VERSION, CREATE_FEEDS, CREATE_ARTICLES, CREATE_INDEXES, CREATE_SETTINGS } from './schema';
 
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 let _db: SQLite.SQLiteDatabase | null = null;
 let _lastPath: string | undefined;
@@ -60,6 +60,12 @@ async function _migrate(db: SQLite.SQLiteDatabase): Promise<void> {
       await db.execAsync(`ALTER TABLE articles ADD COLUMN read_at DATETIME`);
       await db.execAsync(`UPDATE articles SET read_at = datetime('now') WHERE read = 1 AND read_at IS NULL`);
     }
+    if (current > 0 && current < 3) {
+      // Upgrading from v1 or v2: video_width/video_height don't exist yet.
+      // Fresh installs (current === 0) already have them via CREATE_ARTICLES above.
+      await db.execAsync(`ALTER TABLE articles ADD COLUMN video_width INTEGER`);
+      await db.execAsync(`ALTER TABLE articles ADD COLUMN video_height INTEGER`);
+    }
     await db.runAsync(`INSERT OR IGNORE INTO settings (key, value) VALUES ('retention_days', '90')`);
     await db.runAsync(`INSERT OR REPLACE INTO schema_version (version) VALUES (?)`, [SCHEMA_VERSION]);
   }
@@ -75,5 +81,9 @@ async function _migrate(db: SQLite.SQLiteDatabase): Promise<void> {
   if (!columns.some((c) => c.name === 'read_at')) {
     await db.execAsync(`ALTER TABLE articles ADD COLUMN read_at DATETIME`);
     await db.execAsync(`UPDATE articles SET read_at = datetime('now') WHERE read = 1 AND read_at IS NULL`);
+  }
+  if (!columns.some((c) => c.name === 'video_width')) {
+    await db.execAsync(`ALTER TABLE articles ADD COLUMN video_width INTEGER`);
+    await db.execAsync(`ALTER TABLE articles ADD COLUMN video_height INTEGER`);
   }
 }
