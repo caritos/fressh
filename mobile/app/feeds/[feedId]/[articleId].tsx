@@ -71,7 +71,14 @@ export default function ArticleReaderScreen() {
     }
   }, [feedId]);
 
-  useFocusEffect(useCallback(() => { loadArticle(); loadList(); }, [loadArticle, loadList]));
+  useFocusEffect(
+    useCallback(() => {
+      (async () => {
+        await loadList();
+        await loadArticle();
+      })();
+    }, [loadList, loadArticle])
+  );
 
   if (!article) return null;
 
