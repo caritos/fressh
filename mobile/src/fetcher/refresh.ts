@@ -4,9 +4,11 @@ import {
   upsertFeed,
   insertArticles,
   updateFeedFetchMeta,
+  updateArticleVideoDimensions,
 } from '../db/queries';
 import { fetchFeed } from './fetch';
 import { parseFeed } from './parser';
+import { getYouTubeVideoId, fetchYouTubeAspectRatio } from './youtube';
 
 export interface RefreshSummary {
   fetched: number;
@@ -54,9 +56,17 @@ export async function refresh(
                 title: parsed.title ?? feed.title,
                 site_url: parsed.siteUrl ?? feed.site_url,
               });
-              const count = await insertArticles(db, feed.id, parsed.articles);
+              const insertedArticles = await insertArticles(db, feed.id, parsed.articles);
               await updateFeedFetchMeta(db, feed.id, result.lastModified, result.etag);
-              newArticles += count;
+              await Promise.all(
+                insertedArticles
+                  .filter((a) => getYouTubeVideoId(a.url))
+                  .map(async (a) => {
+                    const dims = await fetchYouTubeAspectRatio(a.url as string);
+                    if (dims) await updateArticleVideoDimensions(db, a.id, dims.width, dims.height);
+                  })
+              );
+              newArticles += insertedArticles.length;
               fetched++;
             }
           }
