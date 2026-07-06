@@ -35,6 +35,8 @@ export const CREATE_ARTICLES = `
     read INTEGER DEFAULT 0,
     read_at DATETIME,
     starred INTEGER DEFAULT 0,
+    video_width INTEGER,
+    video_height INTEGER,
     FOREIGN KEY (feed_id) REFERENCES feeds(id) ON DELETE CASCADE,
     UNIQUE(feed_id, guid)
   )
