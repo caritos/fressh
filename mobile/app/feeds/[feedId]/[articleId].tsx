@@ -10,6 +10,7 @@ import { getArticle, markRead, toggleStar, getArticles, type ArticleRow } from '
 import { FONTS, COLORS } from '../../../src/constants';
 import NavBar from '../../../src/components/ui/NavBar';
 import { getYouTubeVideoId } from '../../../src/fetcher/youtube';
+import { getRemainingUnreadAhead } from '../../../src/reader/remainingUnread';
 
 function formatDate(iso: string | null): string {
   if (!iso) return '';
@@ -93,6 +94,12 @@ export default function ArticleReaderScreen() {
   const prevArticle = currentIndex > 0 ? articleList[currentIndex - 1] : null;
   const nextArticle = currentIndex < articleList.length - 1 ? articleList[currentIndex + 1] : null;
 
+  const remainingAhead = getRemainingUnreadAhead(articleList, article.id, feedId);
+  const headerTitle =
+    remainingAhead > 0
+      ? `${article.feed_title ?? ''} · ${remainingAhead} left`
+      : article.feed_title ?? '';
+
   const onStar = async () => {
     try {
       const db = getDb();
@@ -125,7 +132,7 @@ export default function ArticleReaderScreen() {
     <View style={{ flex: 1, backgroundColor: COLORS.background }}>
       <Stack.Screen
         options={{
-          title: article.feed_title ?? '',
+          title: headerTitle,
           headerBackButtonDisplayMode: 'minimal',
           headerRight: () => (
             <View style={styles.headerActions}>
