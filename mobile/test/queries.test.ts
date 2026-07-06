@@ -286,3 +286,29 @@ test('migration: ALTER TABLE adds video_width/video_height to a pre-existing v2 
   expect(row.video_width).toBeNull();
   expect(row.video_height).toBeNull();
 });
+
+test('updateArticleVideoDimensions SQL: sets video_width and video_height', () => {
+  const feedId = insertFeed('https://f.com/feed', 'Feed');
+  insertArticle(feedId, 'a1', 0);
+  const id = (db.query(`SELECT id FROM articles WHERE guid = 'a1'`).get() as any).id;
+
+  db.exec(`UPDATE articles SET video_width = 113, video_height = 200 WHERE id = ${id}`);
+
+  const row = db.query(`SELECT video_width, video_height FROM articles WHERE id = ${id}`).get() as any;
+  expect(row.video_width).toBe(113);
+  expect(row.video_height).toBe(200);
+});
+
+test('insertArticles SQL: INSERT OR IGNORE reports which rows actually inserted', () => {
+  const feedId = insertFeed('https://f.com/feed', 'Feed');
+
+  const first = db.run(
+    `INSERT OR IGNORE INTO articles (feed_id, guid, title, url) VALUES (${feedId}, 'g1', 'A', 'https://a.com')`
+  );
+  const second = db.run(
+    `INSERT OR IGNORE INTO articles (feed_id, guid, title, url) VALUES (${feedId}, 'g1', 'B', 'https://b.com')`
+  );
+
+  expect(first.changes).toBe(1);
+  expect(second.changes).toBe(0);
+});

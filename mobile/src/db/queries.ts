@@ -29,6 +29,8 @@ export interface ArticleRow {
   read: number;
   read_at: string | null;
   starred: number;
+  video_width: number | null;
+  video_height: number | null;
   feed_title: string | null;
   feed_site_url: string | null;
 }
@@ -134,8 +136,8 @@ export async function insertArticles(
     summary: string | null;
     published_at: string | null;
   }>
-): Promise<number> {
-  let inserted = 0;
+): Promise<Array<{ id: number; url: string | null }>> {
+  const inserted: Array<{ id: number; url: string | null }> = [];
   for (const a of articles) {
     const result = await db.runAsync(
       `INSERT OR IGNORE INTO articles
@@ -143,7 +145,9 @@ export async function insertArticles(
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [feedId, a.guid, a.title, a.url, a.author, a.content_html, a.content_text, a.summary, a.published_at]
     );
-    inserted += result.changes;
+    if (result.changes > 0) {
+      inserted.push({ id: result.lastInsertRowId, url: a.url });
+    }
   }
   return inserted;
 }
@@ -158,6 +162,15 @@ export async function updateFeedFetchMeta(
     `UPDATE feeds SET last_modified = ?, etag = ?, last_fetch = datetime('now') WHERE id = ?`,
     [lastModified, etag, feedId]
   );
+}
+
+export async function updateArticleVideoDimensions(
+  db: SQLiteDatabase,
+  id: number,
+  width: number,
+  height: number
+): Promise<void> {
+  await db.runAsync(`UPDATE articles SET video_width = ?, video_height = ? WHERE id = ?`, [width, height, id]);
 }
 
 export async function markRead(db: SQLiteDatabase, id: number): Promise<void> {
