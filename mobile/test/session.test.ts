@@ -10,3 +10,10 @@ test('getReaderSession: returns null when the key does not match the last stored
   setReaderSession('unread', [1, 2, 3]);
   expect(getReaderSession('today')).toBeNull();
 });
+
+test('getReaderSession: setting a new key invalidates the previous key entirely', () => {
+  setReaderSession('unread', [1, 2, 3]);
+  setReaderSession('today', [4, 5]);
+  expect(getReaderSession('unread')).toBeNull();
+  expect(getReaderSession('today')).toEqual([4, 5]);
+});

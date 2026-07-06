@@ -63,7 +63,7 @@ export default function ArticleReaderScreen() {
     try {
       const db = getDb();
       const sessionIds = getReaderSession(feedId);
-      if (sessionIds) {
+      if (sessionIds && sessionIds.includes(Number(articleId))) {
         setArticleList(await getArticlesByIds(db, sessionIds));
         return;
       }
@@ -76,7 +76,7 @@ export default function ArticleReaderScreen() {
     } catch (e) {
       console.error('ArticleReader loadList error:', e);
     }
-  }, [feedId]);
+  }, [feedId, articleId]);
 
   useFocusEffect(
     useCallback(() => {

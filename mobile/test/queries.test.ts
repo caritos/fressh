@@ -351,3 +351,22 @@ test('getArticlesByIds: reflects live read state from the query result', async (
   const result = await getArticlesByIds(fakeDb, [5]);
   expect(result[0].read).toBe(1);
 });
+
+test('getArticlesByIds: includes read articles (no implicit read=0 filter) — the core #32 fix invariant', async () => {
+  const feedId = insertFeed('https://example.com/feed3', 'Feed3');
+  insertArticle(feedId, 'a', 1, 0); // read
+  insertArticle(feedId, 'b', 0, 0); // unread
+  insertArticle(feedId, 'c', 1, 0); // read
+  const rows = db.query(`SELECT id FROM articles ORDER BY id`).all() as any[];
+  const ids = rows.map((r) => r.id);
+
+  // Real getArticlesByIds executes the actual SQL via this adapter over the
+  // synchronous bun:sqlite db, shaped to look like expo-sqlite's getAllAsync.
+  const fakeAsyncDb = {
+    getAllAsync: async (sql: string, params: number[]) => db.query(sql).all(...params) as any[],
+  } as any;
+
+  const result = await getArticlesByIds(fakeAsyncDb, ids);
+  expect(result.map((r) => r.id)).toEqual(ids);
+  expect(result.map((r) => r.read)).toEqual([1, 0, 1]);
+});

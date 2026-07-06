@@ -582,7 +582,7 @@ There is no automated component-test harness for these screens. Verify with the 
 1. Ensure "All Unread" has at least 4 unread articles (add/refresh a feed if needed).
 2. Open the first article from the list, then tap **Next** three times, then tap **Prev** three times back to the start.
 3. At every article except the very first, confirm **Prev** is enabled (not dimmed) and tapping it lands on the exact article you came from (check the headline).
-4. Confirm the "`<Feed>` · N left" count is present and consistent in both directions (decreasing on Next, increasing on Prev).
+4. Confirm the "`<Feed>` · N left" count reflects live unread state at every step: it decreases by one on each **Next**. On the way back via **Prev**, it does **not** necessarily increase symmetrically — articles you already read on the way forward are correctly excluded from the count when you revisit them, so the count can stay flat or only partially recover. That is correct behavior (the count is not a simple position index), not a bug.
 5. Repeat steps 1-4 for "Today" if a mix of read/unread articles published today is available.
 6. Force-quit and relaunch, then open the reader directly via a deep link (e.g. `xcrun simctl openurl <device> "fressh://feeds/unread/<some-article-id>"`) without going through the list screen first — confirm it still opens without crashing (exercises the live-query fallback, since no session was set for this key).
 

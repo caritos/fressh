@@ -180,7 +180,9 @@ const loadList = useCallback(async () => {
 
 Everything downstream (`currentIndex`, `prevArticle`, `nextArticle`, `remainingAhead`) is unchanged — they already operate on `articleList` regardless of how it was populated. `remainingAhead` still reflects live read state per row (from `getArticlesByIds`), so the count keeps decrementing correctly as the session progresses; only *membership* in the list is frozen, not the read flags used for counting.
 
-The Task 2 load-order fix (`loadList` before `markRead`) remains in place — harmless, and still correct for the deep-link fallback path.
+The Task 2 load-order fix (`loadList` before `markRead`) remains in place — harmless, and still correct for the deep-link fallback path. Entering the reader via a fresh/cold deep link (no session captured for that key) falls back to the original live `read = 0` query, which means the original #32 symptom (Prev disabled while navigating forward) can still occur on that specific entry path — this is a known, accepted limitation of the fallback, not a regression introduced by this fix.
+
+Note also that `setReaderSession` is called in the list screen's `onTap` for every filter — including `all`, `starred`, and numeric feed ids, not just `unread`/`today` — so browsing any filter now uses a frozen list for the duration of that reader session. This is intentional (it keeps behavior consistent across filters, and is harmless since `remainingAhead` already returns `0` for filters other than `unread`/`today`), but it is a broader behavior change than the issue itself strictly required, and is worth being explicit about.
 
 ### Testing (addendum)
 
