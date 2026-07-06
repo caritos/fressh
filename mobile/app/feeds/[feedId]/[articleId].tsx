@@ -9,6 +9,7 @@ import { getDb } from '../../../src/db/database';
 import { getArticle, markRead, toggleStar, getArticles, type ArticleRow } from '../../../src/db/queries';
 import { FONTS, COLORS } from '../../../src/constants';
 import NavBar from '../../../src/components/ui/NavBar';
+import { getYouTubeVideoId } from '../../../src/fetcher/youtube';
 
 function formatDate(iso: string | null): string {
   if (!iso) return '';
@@ -26,15 +27,6 @@ function stripHtml(html: string): string {
     .replace(/&#39;/g, "'")
     .replace(/\s+/g, ' ')
     .trim();
-}
-
-function getYouTubeId(url: string | null): string | null {
-  if (!url) return null;
-  const m =
-    url.match(/[?&]v=([a-zA-Z0-9_-]{11})/) ||
-    url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/) ||
-    url.match(/\/embed\/([a-zA-Z0-9_-]{11})/);
-  return m ? m[1] : null;
 }
 
 function getBody(article: ArticleRow): string {
@@ -83,8 +75,13 @@ export default function ArticleReaderScreen() {
 
   if (!article) return null;
 
-  const youtubeId = getYouTubeId(article.url);
-  const videoHeight = Math.round((width - 40) * (9 / 16));
+  const youtubeId = getYouTubeVideoId(article.url);
+  const boxWidth = width - 40;
+  const aspectRatio =
+    article.video_width && article.video_height
+      ? article.video_width / article.video_height
+      : 16 / 9;
+  const videoHeight = Math.round(boxWidth / aspectRatio);
   const currentIndex = articleList.findIndex((a) => a.id === article.id);
   const prevArticle = currentIndex > 0 ? articleList[currentIndex - 1] : null;
   const nextArticle = currentIndex < articleList.length - 1 ? articleList[currentIndex + 1] : null;
