@@ -6,7 +6,7 @@ import { useWindowDimensions } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import YoutubePlayer from 'react-native-youtube-iframe';
 import { getDb } from '../../../src/db/database';
-import { getArticle, markRead, toggleStar, getArticles, getArticlesByIds, type ArticleRow } from '../../../src/db/queries';
+import { getArticle, markRead, toggleStar, getArticles, getArticlesByIds, isSmartFeedId, type ArticleRow } from '../../../src/db/queries';
 import { FONTS, COLORS } from '../../../src/constants';
 import NavBar from '../../../src/components/ui/NavBar';
 import { getYouTubeVideoId } from '../../../src/fetcher/youtube';
@@ -67,10 +67,7 @@ export default function ArticleReaderScreen() {
         setArticleList(await getArticlesByIds(db, sessionIds));
         return;
       }
-      const feedIdParam =
-        feedId === 'unread' || feedId === 'starred' || feedId === 'today' || feedId === 'all'
-          ? feedId
-          : Number(feedId);
+      const feedIdParam = isSmartFeedId(feedId) ? feedId : Number(feedId);
       const list = await getArticles(db, feedIdParam);
       setArticleList(list);
     } catch (e) {

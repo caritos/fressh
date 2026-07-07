@@ -21,8 +21,11 @@ import {
   markAllRead,
   markAllUnreadRead,
   markAllTodayRead,
+  markAllYoutubeRead,
+  markAllNonYoutubeRead,
   toggleStar,
   getFeeds,
+  isSmartFeedId,
   type ArticleRow,
 } from '../../../src/db/queries';
 import { refresh } from '../../../src/fetcher/refresh';
@@ -35,6 +38,8 @@ const SMART_LABELS: Record<string, string> = {
   unread: 'All Unread',
   starred: 'Starred',
   today: 'Today',
+  youtube: 'YouTube',
+  nonyoutube: 'Non-YouTube',
 };
 
 const TOOLBAR_HEIGHT = 50;
@@ -55,10 +60,7 @@ export default function ArticleListScreen() {
   const insets = useSafeAreaInsets();
   const { feedId: rawId } = useLocalSearchParams<{ feedId: string }>();
   if (Array.isArray(rawId)) return null;
-  const feedId =
-    rawId === 'unread' || rawId === 'starred' || rawId === 'today' || rawId === 'all'
-      ? rawId
-      : Number(rawId);
+  const feedId = isSmartFeedId(rawId) ? rawId : Number(rawId);
 
   const [articles, setArticles] = useState<ArticleRow[]>([]);
   const [feedTitle, setFeedTitle] = useState('');
@@ -107,6 +109,10 @@ export default function ArticleListScreen() {
           await markAllTodayRead(db);
         } else if (feedId === 'all') {
           await markAllUnreadRead(db);
+        } else if (feedId === 'youtube') {
+          await markAllYoutubeRead(db);
+        } else if (feedId === 'nonyoutube') {
+          await markAllNonYoutubeRead(db);
         } else {
           return;
         }
@@ -197,7 +203,13 @@ export default function ArticleListScreen() {
     );
   }, [articles, feedId, rawId]);
 
-  const hasMarkAllRead = typeof feedId === 'number' || feedId === 'unread' || feedId === 'today' || feedId === 'all';
+  const hasMarkAllRead =
+    typeof feedId === 'number' ||
+    feedId === 'unread' ||
+    feedId === 'today' ||
+    feedId === 'all' ||
+    feedId === 'youtube' ||
+    feedId === 'nonyoutube';
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
