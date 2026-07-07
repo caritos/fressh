@@ -29,6 +29,8 @@ const SMART_FEEDS = [
   { id: 'starred', label: 'Starred' },
   { id: 'unread', label: 'All Unread' },
   { id: 'today', label: 'Today' },
+  { id: 'youtube', label: 'YouTube' },
+  { id: 'nonyoutube', label: 'Non-YouTube' },
 ];
 
 const TOOLBAR_HEIGHT = 50;
@@ -41,10 +43,18 @@ export default function FeedsScreen() {
   const [addVisible, setAddVisible] = useState(false);
   const [addUrl, setAddUrl] = useState('');
   const [addLoading, setAddLoading] = useState(false);
-  const [smartCounts, setSmartCounts] = useState<{ starred: number; unread: number; today: number }>({
+  const [smartCounts, setSmartCounts] = useState<{
+    starred: number;
+    unread: number;
+    today: number;
+    youtube: number;
+    nonyoutube: number;
+  }>({
     starred: 0,
     unread: 0,
     today: 0,
+    youtube: 0,
+    nonyoutube: 0,
   });
 
   const loadFeeds = useCallback(async () => {
@@ -61,11 +71,19 @@ export default function FeedsScreen() {
     const todayRow = await db.getFirstAsync<{ count: number }>(
       "SELECT COUNT(*) as count FROM articles WHERE read = 0 AND date(published_at) = date('now')"
     );
+    const youtubeRow = await db.getFirstAsync<{ count: number }>(
+      "SELECT COUNT(*) as count FROM articles WHERE url LIKE '%youtube.com%' OR url LIKE '%youtu.be%'"
+    );
+    const nonYoutubeRow = await db.getFirstAsync<{ count: number }>(
+      "SELECT COUNT(*) as count FROM articles WHERE url IS NULL OR (url NOT LIKE '%youtube.com%' AND url NOT LIKE '%youtu.be%')"
+    );
 
     setSmartCounts({
       starred: starredRow?.count ?? 0,
       unread: unreadRow?.count ?? 0,
       today: todayRow?.count ?? 0,
+      youtube: youtubeRow?.count ?? 0,
+      nonyoutube: nonYoutubeRow?.count ?? 0,
     });
   }, []);
 
@@ -197,6 +215,8 @@ export default function FeedsScreen() {
     if (id === 'starred') return smartCounts.starred;
     if (id === 'unread') return smartCounts.unread;
     if (id === 'today') return smartCounts.today;
+    if (id === 'youtube') return smartCounts.youtube;
+    if (id === 'nonyoutube') return smartCounts.nonyoutube;
     return 0;
   }, [smartCounts]);
 
