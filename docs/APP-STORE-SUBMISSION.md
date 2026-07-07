@@ -100,7 +100,7 @@ Apple requested additional information before continuing the review. This is a s
   - **Note for reviewer screen capture:** explicitly show that there is NO login screen, NO purchase flow, NO camera/location/contacts prompt at any point
   - Upload in App Store Connect → App Review Information → Attachments
 
-- [ ] **Document test device** — exact iPhone model (e.g. iPhone 15 Pro) and iOS version (e.g. iOS 18.4)
+- [x] **Document test device** — iPhone 13 Pro, iOS 26.5
 
 - [ ] **Update Notes field** in App Store Connect → App Review Information with the full text below
 
@@ -110,12 +110,12 @@ Apple requested additional information before continuing the review. This is a s
 
 ```
 1. SCREEN RECORDING
-The attached screen recording was captured on [INSERT: iPhone model, iOS version] and shows the complete typical user flow: launching the app, adding a feed by URL, refreshing to fetch new articles, reading an article, starring an article, sharing, navigating between articles with the prev/next bar, and accessing Settings for OPML import/export.
+The attached screen recording was captured on iPhone 13 Pro, iOS 26.5 and shows the complete typical user flow: launching the app, adding a feed by URL, refreshing to fetch new articles, reading an article, starring an article, sharing, navigating between articles with the prev/next bar, and accessing Settings for OPML import/export.
 
 The app has no account registration or login flow. There is no paid content, no subscription, and no in-app purchase. There is no user-generated content. The app never requests access to camera, location, contacts, microphone, or any sensitive data, and does not use App Tracking Transparency.
 
 2. DEVICES TESTED
-[INSERT: e.g. iPhone 15 Pro, iOS 18.4 — tested on physical device before submission]
+iPhone 13 Pro, iOS 26.5 — tested on physical device before submission
 
 3. APP PURPOSE AND TARGET AUDIENCE
 Fressh is a clean, minimal RSS/Atom feed reader for iPhone. It solves the problem of staying informed without algorithmic curation, advertising, or engagement manipulation: users subscribe directly to sources they trust and read new articles in the order they were published.
