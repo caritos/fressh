@@ -1,7 +1,7 @@
 import { Database } from 'bun:sqlite';
 import { expect, test, beforeEach, afterEach } from 'bun:test';
 import { CREATE_FEEDS, CREATE_ARTICLES, CREATE_INDEXES, CREATE_SCHEMA_VERSION, CREATE_SETTINGS } from '../src/db/schema';
-import { getArticlesByIds, type ArticleRow, isSmartFeedId } from '../src/db/queries';
+import { getArticlesByIds, type ArticleRow, isSmartFeedId, markAllYoutubeRead, markAllNonYoutubeRead } from '../src/db/queries';
 
 // Synchronous bun:sqlite wrapper to validate the same SQL used in queries.ts
 let db: Database;
@@ -266,6 +266,39 @@ test('markUnread: clears read_at', () => {
   const row = db.query(`SELECT read, read_at FROM articles WHERE id = ${id}`).get() as any;
   expect(row.read).toBe(0);
   expect(row.read_at).toBeNull();
+});
+
+function fakeRunAsyncDb() {
+  return { runAsync: async (sql: string) => db.run(sql) } as any;
+}
+
+test('markAllYoutubeRead: marks only unread YouTube articles as read', async () => {
+  const feedId = insertFeed('https://f.com/feed', 'Feed');
+  db.exec(`INSERT INTO articles (feed_id, guid, title, url, read) VALUES (${feedId}, 'yt-unread', 'YT', 'https://youtu.be/a', 0)`);
+  db.exec(`INSERT INTO articles (feed_id, guid, title, url, read) VALUES (${feedId}, 'blog-unread', 'Blog', 'https://example.com/b', 0)`);
+
+  await markAllYoutubeRead(fakeRunAsyncDb());
+
+  const yt = db.query(`SELECT read FROM articles WHERE guid = 'yt-unread'`).get() as any;
+  const blog = db.query(`SELECT read FROM articles WHERE guid = 'blog-unread'`).get() as any;
+  expect(yt.read).toBe(1);
+  expect(blog.read).toBe(0);
+});
+
+test('markAllNonYoutubeRead: marks only unread non-YouTube articles as read, including NULL-url ones', async () => {
+  const feedId = insertFeed('https://f.com/feed', 'Feed');
+  db.exec(`INSERT INTO articles (feed_id, guid, title, url, read) VALUES (${feedId}, 'yt-unread', 'YT', 'https://youtu.be/a', 0)`);
+  db.exec(`INSERT INTO articles (feed_id, guid, title, url, read) VALUES (${feedId}, 'blog-unread', 'Blog', 'https://example.com/b', 0)`);
+  db.exec(`INSERT INTO articles (feed_id, guid, title, url, read) VALUES (${feedId}, 'nourl-unread', 'NoURL', NULL, 0)`);
+
+  await markAllNonYoutubeRead(fakeRunAsyncDb());
+
+  const yt = db.query(`SELECT read FROM articles WHERE guid = 'yt-unread'`).get() as any;
+  const blog = db.query(`SELECT read FROM articles WHERE guid = 'blog-unread'`).get() as any;
+  const nourl = db.query(`SELECT read FROM articles WHERE guid = 'nourl-unread'`).get() as any;
+  expect(yt.read).toBe(0);
+  expect(blog.read).toBe(1);
+  expect(nourl.read).toBe(1);
 });
 
 test('deleteExpiredReadArticles SQL: deletes old read articles, keeps starred/recent/unread', () => {

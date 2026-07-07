@@ -233,6 +233,20 @@ export async function markAllTodayRead(db: SQLiteDatabase): Promise<void> {
   await db.runAsync(`UPDATE articles SET read = 1, read_at = COALESCE(read_at, datetime('now')) WHERE read = 0 AND date(published_at) = date('now')`);
 }
 
+export async function markAllYoutubeRead(db: SQLiteDatabase): Promise<void> {
+  await db.runAsync(
+    `UPDATE articles SET read = 1, read_at = COALESCE(read_at, datetime('now'))
+     WHERE read = 0 AND (url LIKE '%youtube.com%' OR url LIKE '%youtu.be%')`
+  );
+}
+
+export async function markAllNonYoutubeRead(db: SQLiteDatabase): Promise<void> {
+  await db.runAsync(
+    `UPDATE articles SET read = 1, read_at = COALESCE(read_at, datetime('now'))
+     WHERE read = 0 AND (url IS NULL OR (url NOT LIKE '%youtube.com%' AND url NOT LIKE '%youtu.be%'))`
+  );
+}
+
 export async function toggleStar(db: SQLiteDatabase, id: number): Promise<void> {
   await db.runAsync(`UPDATE articles SET starred = 1 - starred WHERE id = ?`, [id]);
 }
