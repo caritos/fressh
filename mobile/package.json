@@ -26,7 +26,6 @@
     "expo-task-manager": "~55.0.16",
     "expo-web-browser": "~55.0.16",
     "fast-xml-parser": "^5.8.0",
-    "fressh-icloud": "file:./modules/icloud",
     "react": "19.2.0",
     "react-native": "0.83.6",
     "react-native-gesture-handler": "~2.30.0",
