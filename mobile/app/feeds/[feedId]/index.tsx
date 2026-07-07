@@ -210,6 +210,7 @@ export default function ArticleListScreen() {
     feedId === 'all' ||
     feedId === 'youtube' ||
     feedId === 'nonyoutube';
+  const hasUnread = articles.some((a) => a.read === 0);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -228,15 +229,17 @@ export default function ArticleListScreen() {
       />
 
       <View style={[styles.toolbar, { paddingBottom: insets.bottom }]}>
-        <TouchableOpacity style={styles.toolbarBtn} onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={24} color={COLORS.accent} />
+        <TouchableOpacity style={styles.toolbarBtn} onPress={() => router.replace('/feeds')}>
+          <Ionicons name="home-outline" size={22} color={COLORS.accent} />
         </TouchableOpacity>
 
         <View style={styles.toolbarDivider} />
 
         {hasMarkAllRead ? (
-          <TouchableOpacity style={styles.toolbarBtn} onPress={onMarkAllRead}>
-            <Text style={styles.toolbarMarkRead}>Mark All Read</Text>
+          <TouchableOpacity style={styles.toolbarBtn} onPress={onMarkAllRead} disabled={!hasUnread}>
+            <Text style={[styles.toolbarMarkRead, !hasUnread && styles.toolbarMarkReadDisabled]}>
+              Mark All Read
+            </Text>
           </TouchableOpacity>
         ) : (
           <View style={styles.toolbarBtn} />
@@ -289,6 +292,9 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.sansMedium,
     fontSize: 12,
     color: COLORS.accent,
+  },
+  toolbarMarkReadDisabled: {
+    color: COLORS.textDimmed,
   },
   toolbarRefreshText: {
     fontSize: 22,
