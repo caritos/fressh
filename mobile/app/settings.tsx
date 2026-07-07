@@ -192,7 +192,7 @@ export default function SettingsScreen() {
             <Text style={styles.rowSubtitle}>Clean RSS reader for iPhone</Text>
           </View>
           <Text style={styles.rowVersion}>
-            v{Constants.expoConfig?.version ?? '1.0.0'}
+            v{Constants.expoConfig?.version ?? '1.0.0'} ({Constants.expoConfig?.ios?.buildNumber ?? '1'})
           </Text>
         </View>
 

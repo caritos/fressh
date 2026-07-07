@@ -104,6 +104,26 @@ fi
 
 IFS='|' read -r type udid label <<< "${entries[$choice]}"
 
+# Bump the build number on every local build (device or simulator) so the
+# Settings screen's "v1.0.0 (N)" always reflects the build actually installed.
+# Skipped for TestFlight — EAS's own remote autoIncrement handles that path.
+if [[ "$type" != "testflight" ]]; then
+  new_build=$(node -e "
+    const fs = require('fs');
+    const config = require('./app.json');
+    config.expo.ios = config.expo.ios || {};
+    const next = String(parseInt(config.expo.ios.buildNumber || '0', 10) + 1);
+    config.expo.ios.buildNumber = next;
+    fs.writeFileSync('./app.json', JSON.stringify(config, null, 2) + '\n');
+    console.log(next);
+  ")
+  echo "Build number: $new_build"
+  info_plist="ios/Fressh/Info.plist"
+  if [[ -f "$info_plist" ]]; then
+    /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $new_build" "$info_plist" 2>/dev/null || true
+  fi
+fi
+
 # ---- TestFlight path — EAS cloud build ----
 if [[ "$type" == "testflight" ]]; then
   echo ""
