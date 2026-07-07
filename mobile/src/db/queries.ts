@@ -83,6 +83,8 @@ const ARTICLES_ALL = `
   ORDER BY a.published_at DESC
 `;
 
+// Broader match than getYouTubeVideoId (fetcher/youtube.ts) — this is a category
+// filter, not a check for whether the reader can embed a player; intentional.
 const ARTICLES_YOUTUBE = `
   SELECT a.*, f.title as feed_title, f.site_url as feed_site_url
   FROM articles a

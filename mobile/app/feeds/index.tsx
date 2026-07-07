@@ -72,10 +72,10 @@ export default function FeedsScreen() {
       "SELECT COUNT(*) as count FROM articles WHERE read = 0 AND date(published_at) = date('now')"
     );
     const youtubeRow = await db.getFirstAsync<{ count: number }>(
-      "SELECT COUNT(*) as count FROM articles WHERE url LIKE '%youtube.com%' OR url LIKE '%youtu.be%'"
+      "SELECT COUNT(*) as count FROM articles WHERE read = 0 AND (url LIKE '%youtube.com%' OR url LIKE '%youtu.be%')"
     );
     const nonYoutubeRow = await db.getFirstAsync<{ count: number }>(
-      "SELECT COUNT(*) as count FROM articles WHERE url IS NULL OR (url NOT LIKE '%youtube.com%' AND url NOT LIKE '%youtu.be%')"
+      "SELECT COUNT(*) as count FROM articles WHERE read = 0 AND (url IS NULL OR (url NOT LIKE '%youtube.com%' AND url NOT LIKE '%youtu.be%'))"
     );
 
     setSmartCounts({
