@@ -1,7 +1,7 @@
 import { Database } from 'bun:sqlite';
 import { expect, test, beforeEach, afterEach } from 'bun:test';
 import { CREATE_FEEDS, CREATE_ARTICLES, CREATE_INDEXES, CREATE_SCHEMA_VERSION, CREATE_SETTINGS } from '../src/db/schema';
-import { getArticlesByIds, type ArticleRow } from '../src/db/queries';
+import { getArticlesByIds, type ArticleRow, isSmartFeedId } from '../src/db/queries';
 
 // Synchronous bun:sqlite wrapper to validate the same SQL used in queries.ts
 let db: Database;
@@ -147,6 +147,44 @@ test('ARTICLES_ALL: returns every article regardless of read state, newest first
   expect(rows).toHaveLength(2);
   expect(rows[0].guid).toBe('new-unread');
   expect(rows[1].guid).toBe('old-read');
+});
+
+test('isSmartFeedId: true for all six smart feed ids', () => {
+  for (const id of ['unread', 'starred', 'today', 'all', 'youtube', 'nonyoutube']) {
+    expect(isSmartFeedId(id)).toBe(true);
+  }
+});
+
+test('isSmartFeedId: false for a numeric-looking feed id string', () => {
+  expect(isSmartFeedId('42')).toBe(false);
+});
+
+test('ARTICLES_YOUTUBE: matches youtube.com and youtu.be URLs, excludes others', () => {
+  const feedId = insertFeed('https://f.com/feed', 'Feed');
+  db.exec(`INSERT INTO articles (feed_id, guid, title, url, published_at)
+           VALUES (${feedId}, 'yt1', 'YT1', 'https://www.youtube.com/watch?v=abc', datetime('now'))`);
+  db.exec(`INSERT INTO articles (feed_id, guid, title, url, published_at)
+           VALUES (${feedId}, 'yt2', 'YT2', 'https://youtu.be/xyz', datetime('now'))`);
+  db.exec(`INSERT INTO articles (feed_id, guid, title, url, published_at)
+           VALUES (${feedId}, 'blog', 'Blog', 'https://example.com/post', datetime('now'))`);
+  const rows = db.query(
+    `SELECT guid FROM articles WHERE url LIKE '%youtube.com%' OR url LIKE '%youtu.be%'`
+  ).all() as any[];
+  expect(rows.map((r) => r.guid).sort()).toEqual(['yt1', 'yt2']);
+});
+
+test('ARTICLES_NON_YOUTUBE: excludes YouTube URLs, includes NULL-url articles', () => {
+  const feedId = insertFeed('https://f.com/feed', 'Feed');
+  db.exec(`INSERT INTO articles (feed_id, guid, title, url, published_at)
+           VALUES (${feedId}, 'yt1', 'YT1', 'https://www.youtube.com/watch?v=abc', datetime('now'))`);
+  db.exec(`INSERT INTO articles (feed_id, guid, title, url, published_at)
+           VALUES (${feedId}, 'blog', 'Blog', 'https://example.com/post', datetime('now'))`);
+  db.exec(`INSERT INTO articles (feed_id, guid, title, url, published_at)
+           VALUES (${feedId}, 'nourl', 'No URL', NULL, datetime('now'))`);
+  const rows = db.query(
+    `SELECT guid FROM articles WHERE url IS NULL OR (url NOT LIKE '%youtube.com%' AND url NOT LIKE '%youtu.be%')`
+  ).all() as any[];
+  expect(rows.map((r) => r.guid).sort()).toEqual(['blog', 'nourl']);
 });
 
 test('CREATE_ARTICLES: read_at column defaults to NULL', () => {

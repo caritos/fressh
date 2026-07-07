@@ -83,18 +83,44 @@ const ARTICLES_ALL = `
   ORDER BY a.published_at DESC
 `;
 
+const ARTICLES_YOUTUBE = `
+  SELECT a.*, f.title as feed_title, f.site_url as feed_site_url
+  FROM articles a
+  JOIN feeds f ON a.feed_id = f.id
+  WHERE a.url LIKE '%youtube.com%' OR a.url LIKE '%youtu.be%'
+  ORDER BY a.published_at DESC
+`;
+
+const ARTICLES_NON_YOUTUBE = `
+  SELECT a.*, f.title as feed_title, f.site_url as feed_site_url
+  FROM articles a
+  JOIN feeds f ON a.feed_id = f.id
+  WHERE a.url IS NULL OR (a.url NOT LIKE '%youtube.com%' AND a.url NOT LIKE '%youtu.be%')
+  ORDER BY a.published_at DESC
+`;
+
+export type SmartFeedId = 'unread' | 'starred' | 'today' | 'all' | 'youtube' | 'nonyoutube';
+
+const SMART_FEED_IDS: readonly SmartFeedId[] = ['unread', 'starred', 'today', 'all', 'youtube', 'nonyoutube'];
+
+export function isSmartFeedId(id: string): id is SmartFeedId {
+  return (SMART_FEED_IDS as readonly string[]).includes(id);
+}
+
 export async function getFeeds(db: SQLiteDatabase): Promise<FeedRow[]> {
   return db.getAllAsync<FeedRow>(FEEDS_WITH_UNREAD);
 }
 
 export async function getArticles(
   db: SQLiteDatabase,
-  feedId: number | 'unread' | 'starred' | 'today' | 'all'
+  feedId: number | SmartFeedId
 ): Promise<ArticleRow[]> {
   if (feedId === 'unread') return db.getAllAsync<ArticleRow>(ARTICLES_UNREAD);
   if (feedId === 'starred') return db.getAllAsync<ArticleRow>(ARTICLES_STARRED);
   if (feedId === 'today') return db.getAllAsync<ArticleRow>(ARTICLES_TODAY);
   if (feedId === 'all') return db.getAllAsync<ArticleRow>(ARTICLES_ALL);
+  if (feedId === 'youtube') return db.getAllAsync<ArticleRow>(ARTICLES_YOUTUBE);
+  if (feedId === 'nonyoutube') return db.getAllAsync<ArticleRow>(ARTICLES_NON_YOUTUBE);
   return db.getAllAsync<ArticleRow>(ARTICLES_BY_FEED, [feedId]);
 }
 
