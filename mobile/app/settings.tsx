@@ -17,7 +17,7 @@ import Constants from 'expo-constants';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { getDb } from '../src/db/database';
-import { getFeeds, upsertFeed, getFeedByUrl, getSetting, setSetting } from '../src/db/queries';
+import { getFeeds, upsertFeed, getFeedByUrl, getSetting, setSetting, deleteAllFeeds } from '../src/db/queries';
 import { parseOpml, buildOpml } from '../src/fetcher/opml';
 import { FONTS, COLORS } from '../src/constants';
 
@@ -39,6 +39,7 @@ async function importOpmlXml(xml: string): Promise<{ added: number; skipped: num
 
 export default function SettingsScreen() {
   const [exporting, setExporting] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
   const [pasteVisible, setPasteVisible] = useState(false);
   const [pasteText, setPasteText] = useState('');
   const [pasteLoading, setPasteLoading] = useState(false);
@@ -129,6 +130,31 @@ export default function SettingsScreen() {
     }
   };
 
+  const onDeleteAllFeeds = () => {
+    Alert.alert(
+      'Delete All Feeds',
+      'This removes every subscription and all of their articles. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete All',
+          style: 'destructive',
+          onPress: async () => {
+            setDeletingAll(true);
+            try {
+              const db = getDb();
+              await deleteAllFeeds(db);
+            } catch {
+              Alert.alert('Error', 'Failed to delete all feeds.');
+            } finally {
+              setDeletingAll(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ title: 'Settings' }} />
@@ -163,6 +189,23 @@ export default function SettingsScreen() {
           </View>
           {exporting
             ? <ActivityIndicator color={COLORS.accent} />
+            : <Text style={styles.chevron}>›</Text>}
+        </TouchableOpacity>
+
+        <View style={styles.divider} />
+
+        <TouchableOpacity
+          style={styles.row}
+          onPress={onDeleteAllFeeds}
+          disabled={deletingAll}
+          activeOpacity={0.6}
+        >
+          <View style={styles.rowContent}>
+            <Text style={styles.rowTitleDestructive}>Delete All Feeds</Text>
+            <Text style={styles.rowSubtitle}>Remove every subscription and article</Text>
+          </View>
+          {deletingAll
+            ? <ActivityIndicator color="#C0392B" />
             : <Text style={styles.chevron}>›</Text>}
         </TouchableOpacity>
       </View>
@@ -309,6 +352,11 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.sansMedium,
     fontSize: 15,
     color: COLORS.text,
+  },
+  rowTitleDestructive: {
+    fontFamily: FONTS.sansMedium,
+    fontSize: 15,
+    color: '#C0392B',
   },
   rowSubtitle: {
     fontFamily: FONTS.sans,

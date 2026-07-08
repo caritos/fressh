@@ -257,6 +257,10 @@ export async function deleteFeed(db: SQLiteDatabase, id: number): Promise<void> 
   await db.runAsync(`DELETE FROM feeds WHERE id = ?`, [id]);
 }
 
+export async function deleteAllFeeds(db: SQLiteDatabase): Promise<void> {
+  await db.runAsync(`DELETE FROM feeds`);
+}
+
 export async function getTotalUnreadCount(db: SQLiteDatabase): Promise<number> {
   const row = await db.getFirstAsync<{ count: number }>(
     `SELECT COUNT(*) as count FROM articles WHERE read = 0`
