@@ -82,13 +82,13 @@ https://fressh.caritos.com/privacy
 
 ---
 
-## Guideline 2.1 Resubmission — Issue #7 (second rejection)
+## Guideline 2.1 Resubmission — Issue #7 (second rejection, RESOLVED)
 
-Apple requested additional information before continuing the review. This is a second request; the notes below supersede the issue #6 notes. See also: [GitHub issue #7](https://github.com/caritos/fressh/issues/7)
+Apple requested additional information before continuing the review. This was a second request; the notes below superseded the issue #6 notes. **Resubmitted and passed review — app is ready for distribution.** See also: [GitHub issue #7](https://github.com/caritos/fressh/issues/7) (closed).
 
 ### Checklist
 
-- [ ] **Screen recording on a physical iPhone** (not Simulator), latest iOS
+- [x] **Screen recording on a physical iPhone** (not Simulator), latest iOS
   - Start from launching the app cold from the home screen
   - Show the feed list (Smart Feeds + user feeds, unread counts)
   - Tap **+** → paste an RSS URL (e.g. `https://feeds.arstechnica.com/arstechnica/index`) → confirm
@@ -99,10 +99,14 @@ Apple requested additional information before continuing the review. This is a s
   - Gear icon → Settings → show OPML Import and Export rows
   - **Note for reviewer screen capture:** explicitly show that there is NO login screen, NO purchase flow, NO camera/location/contacts prompt at any point
   - Upload in App Store Connect → App Review Information → Attachments
+  - Recorded on iPhone 13 Pro, iOS 26.5. File must use a lowercase `.mp4` extension — App Store Connect's upload validator rejected an uppercase `.MP4`.
 
 - [x] **Document test device** — iPhone 13 Pro, iOS 26.5
 
-- [ ] **Update Notes field** in App Store Connect → App Review Information with the full text below
+- [x] **Update Notes field** in App Store Connect → App Review Information with the full text below
+  - Original draft was 4385 characters — over App Store Connect's 4000-char limit. Trimmed to 2676 chars while keeping all 7 requested items; see below.
+
+- [x] **Screenshots** — iPhone 17 Pro Max Simulator screenshots are natively 1320×2868, which App Store Connect rejected ("dimensions are wrong"). Resized to 1284×2778 (accepted 6.7" size) via `sips -z 2778 1284`; aspect ratio is close enough (0.4603 vs 0.4622) that the resize is visually lossless. See `docs/screenshots/20260708-resized/`.
 
 ---
 
@@ -110,60 +114,48 @@ Apple requested additional information before continuing the review. This is a s
 
 ```
 1. SCREEN RECORDING
-The attached screen recording was captured on iPhone 13 Pro, iOS 26.5 and shows the complete typical user flow: launching the app, adding a feed by URL, refreshing to fetch new articles, reading an article, starring an article, sharing, navigating between articles with the prev/next bar, and accessing Settings for OPML import/export.
+The attached recording (iPhone 13 Pro, iOS 26.5) shows the full typical flow: launch, add a feed by URL, refresh, read an article, star, share, navigate with prev/next, and Settings (OPML import/export).
 
-The app has no account registration or login flow. There is no paid content, no subscription, and no in-app purchase. There is no user-generated content. The app never requests access to camera, location, contacts, microphone, or any sensitive data, and does not use App Tracking Transparency.
+The app has no account/login, no paid content, subscriptions, or in-app purchases, and no user-generated content. It never requests camera, location, contacts, microphone, or other sensitive data, and does not use App Tracking Transparency.
 
 2. DEVICES TESTED
-iPhone 13 Pro, iOS 26.5 — tested on physical device before submission
+iPhone 13 Pro, iOS 26.5 — tested on physical device before submission.
 
 3. APP PURPOSE AND TARGET AUDIENCE
-Fressh is a clean, minimal RSS/Atom feed reader for iPhone. It solves the problem of staying informed without algorithmic curation, advertising, or engagement manipulation: users subscribe directly to sources they trust and read new articles in the order they were published.
+Fressh is a clean, minimal RSS/Atom feed reader for iPhone. It solves the problem of staying informed without algorithmic curation, ads, or engagement manipulation — users subscribe directly to sources they trust and read new articles in published order.
 
-Target audience: news readers, bloggers, developers, and anyone who prefers a private, account-free alternative to algorithmic news apps. The app is appropriate for all ages (4+).
-
-The core value Fressh provides:
-- Full control over what you read — no algorithm, no feed manipulation
-- Privacy — all data is stored locally on-device; no server, no account, no tracking
-- Supports any public RSS, Atom, YouTube channel, or Reddit subreddit feed
-- Clean reading experience with no ads, notifications, or dark patterns
+Audience: news readers, bloggers, developers, and anyone who prefers a private, account-free alternative to algorithmic news apps. Appropriate for all ages (4+). All data stays on-device — no server, no account, no tracking.
 
 4. SETUP AND ACCESSING MAIN FEATURES
-No login or account is required at any point.
+No login or account is required.
 
-To access all core features:
-a. Open the app — the feed list loads immediately with Smart Feeds (All Unread, Starred, Today) and any user-added feeds.
-b. Tap the + button (top right) → paste any RSS/Atom feed URL, a YouTube channel URL, or a Reddit subreddit URL → tap Add.
-   Example RSS feeds: https://feeds.arstechnica.com/arstechnica/index / https://xkcd.com/rss.xml
-c. Pull down on the feed list to refresh all feeds and fetch new articles.
-d. Tap any feed to see its article list.
-e. Tap an article to read it. Use the ‹ › bar at the bottom to navigate between articles.
-f. Use the ★ star and ↑ share buttons in the article header to save or share.
-g. Swipe an article row left to Star/Share; swipe right to toggle Read/Unread.
-h. Tap the gear icon (⚙) → Settings to import subscriptions via OPML or export them.
+a. Open the app — feed list loads with Smart Feeds (All Unread, Starred, Today) and any added feeds.
+b. Tap + → paste an RSS/Atom, YouTube channel, or Reddit subreddit URL → Add.
+   Example: https://feeds.arstechnica.com/arstechnica/index
+c. Pull to refresh to fetch new articles.
+d. Tap a feed → tap an article to read it. Use ‹ › to navigate.
+e. Use ★ (star) and ↑ (share) in the article header.
+f. Swipe a row left (Star/Share) or right (Read/Unread).
+g. Gear icon → Settings for OPML import/export.
 
-No demo credentials are needed.
+No demo credentials needed.
 
 5. EXTERNAL SERVICES
-The app makes direct network requests only to the following services:
+Direct network requests only, no Fressh server involved:
+a. RSS/Atom feed servers — fetches feed XML from the subscribed URL directly.
+b. YouTube RSS (youtube.com/feeds/videos.xml) — derived from the channel's public page; no API key or OAuth.
+c. Reddit RSS (reddit.com/r/{subreddit}/top/.rss) — public feed, no account/API key.
+d. Google Favicons API — display-only site icon lookup, no user data sent.
 
-a. RSS/Atom feed servers — the app fetches feed XML directly from the URL the user subscribed to (e.g. arstechnica.com, xkcd.com). These are public feeds hosted by the content publishers. No Fressh server is involved.
+No analytics, crash reporting, ads, authentication, payments, or AI services are used.
 
-b. YouTube RSS endpoint (youtube.com/feeds/videos.xml) — when a user adds a YouTube channel URL, the app fetches the channel's public HTML page to extract the channel ID, then constructs the standard YouTube RSS feed URL. No YouTube API key or OAuth is used; these are publicly accessible RSS feeds.
-
-c. Reddit RSS endpoint (reddit.com/r/{subreddit}/top/.rss) — when a user adds a Reddit subreddit URL, the app requests Reddit's public RSS feed for that subreddit. No Reddit account or API key is required.
-
-d. Google Favicons API (google.com/s2/favicons) — used to display the website icon (favicon) next to each feed in the list. This is a display-only request; no user data is transmitted.
-
-No analytics, crash reporting, advertising networks, authentication services, payment processors, or AI services are used.
-
-NSAllowsArbitraryLoads is set to true because some RSS feed servers still serve content over HTTP rather than HTTPS. The app does not collect, store, or transmit any user data over these connections.
+NSAllowsArbitraryLoads is true because some RSS servers still serve HTTP; no user data is transmitted over these connections.
 
 6. REGIONAL DIFFERENCES
-None. The app functions identically in all regions. There is no region-specific content, no geo-restricted features, and no localization — all UI is in English.
+None — identical functionality in all regions, no localization (English only).
 
 7. REGULATED INDUSTRY / PROTECTED MATERIAL
-Fressh is not in a regulated industry. It does not offer financial advice, medical information, legal services, or any other regulated content. It does not display third-party protected material beyond publicly accessible RSS/Atom feeds served directly from their publishers' servers.
+Not applicable. No financial, medical, or legal content, and no third-party protected material beyond publicly accessible RSS/Atom feeds served directly from their publishers.
 ```
 
 ---
