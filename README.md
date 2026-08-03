@@ -4,6 +4,8 @@
 
 # fressh
 
+> **⚠️ Deprecated:** This CLI/daemon is being phased out in favor of the [Expo mobile app](mobile/), which is now the project's main source of truth. This project will remain usable until the mobile app fully replaces it, but is no longer under active feature development.
+
 **Fresh RSS** - A lightweight, daemon-based RSS reader for macOS that runs continuously in the background, fetching RSS feeds and storing articles in SQLite for direct database access.
 
 Built with **Bun** for maximum performance - instant TypeScript execution, no build step needed!
