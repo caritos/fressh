@@ -9,6 +9,7 @@ import {
 import { fetchFeed } from './fetch';
 import { parseFeed } from './parser';
 import { getYouTubeVideoId, fetchYouTubeAspectRatio } from './youtube';
+import { logService } from '../logging/logService';
 
 export interface RefreshSummary {
   fetched: number;
@@ -30,6 +31,9 @@ export async function refresh(
   let newArticles = 0;
   let completed = 0;
 
+  await logService.startNewLog('refresh');
+  await logService.write('INFO', 'refresh', `Refreshing ${enabled.length} feed(s)`);
+
   onProgress?.(0, enabled.length);
 
   for (let i = 0; i < enabled.length; i += MAX_CONCURRENT) {
@@ -44,12 +48,15 @@ export async function refresh(
 
           if (result.status === 'not-modified') {
             fetched++;
+            await logService.write('DEBUG', 'refresh', `${feed.url}: not modified`);
           } else if (result.status === 'error') {
             failed++;
+            await logService.write('WARN', 'refresh', `${feed.url}: fetch failed — ${result.message}`);
           } else {
             const parsed = await parseFeed(result.text);
             if (!parsed) {
               failed++;
+              await logService.write('WARN', 'refresh', `${feed.url}: parse failed`);
             } else {
               await upsertFeed(db, {
                 url: feed.url,
@@ -68,10 +75,13 @@ export async function refresh(
               );
               newArticles += insertedArticles.length;
               fetched++;
+              await logService.write('DEBUG', 'refresh', `${feed.url}: ok — ${insertedArticles.length} new article(s)`);
             }
           }
         } catch (e) {
+          const message = e instanceof Error ? e.message : String(e);
           console.error(`refresh: error on ${feed.url}:`, e);
+          await logService.write('ERROR', 'refresh', `${feed.url}: ${message}`);
           failed++;
         } finally {
           onProgress?.(++completed, enabled.length);
@@ -79,6 +89,13 @@ export async function refresh(
       })
     );
   }
+
+  await logService.write(
+    'INFO',
+    'refresh',
+    `Done — ${fetched} fetched, ${failed} failed, ${newArticles} new article(s)`
+  );
+  await logService.finishLog();
 
   return { fetched, failed, newArticles };
 }

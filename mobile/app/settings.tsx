@@ -19,6 +19,7 @@ import * as Sharing from 'expo-sharing';
 import { getDb } from '../src/db/database';
 import { getFeeds, upsertFeed, getFeedByUrl, getSetting, setSetting, deleteAllFeeds } from '../src/db/queries';
 import { parseOpml, buildOpml } from '../src/fetcher/opml';
+import { getMostRecentLogFile } from '../src/logging/logService';
 import { FONTS, COLORS } from '../src/constants';
 
 async function importOpmlXml(xml: string): Promise<{ added: number; skipped: number; errors: number }> {
@@ -127,6 +128,24 @@ export default function SettingsScreen() {
       Alert.alert('Export failed', 'Something went wrong. Please try again.');
     } finally {
       setExporting(false);
+    }
+  };
+
+  const onExportLogs = async () => {
+    try {
+      const logFile = await getMostRecentLogFile();
+      if (!logFile) {
+        Alert.alert('No Logs Yet', 'Refresh your feeds at least once, then try exporting logs.');
+        return;
+      }
+      const canShare = await Sharing.isAvailableAsync();
+      if (!canShare) {
+        Alert.alert('Sharing Unavailable', 'This device does not support the share sheet.');
+        return;
+      }
+      await Sharing.shareAsync(logFile);
+    } catch {
+      Alert.alert('Export Failed', 'Could not export the log file. Please try again.');
     }
   };
 
@@ -241,12 +260,30 @@ export default function SettingsScreen() {
 
         <View style={styles.divider} />
 
-        <View style={styles.row}>
+        <TouchableOpacity
+          style={styles.row}
+          onPress={() => Linking.openURL('https://caritos.com').catch(() => Alert.alert('Unable to open link'))}
+          activeOpacity={0.6}
+        >
           <View style={styles.rowContent}>
             <Text style={styles.rowTitle}>Developer</Text>
             <Text style={styles.rowSubtitle}>Eladio Caritos</Text>
           </View>
-        </View>
+          <Text style={styles.chevron}>›</Text>
+        </TouchableOpacity>
+
+        <View style={styles.divider} />
+
+        <TouchableOpacity
+          style={styles.row}
+          onPress={onExportLogs}
+          activeOpacity={0.6}
+        >
+          <View style={styles.rowContent}>
+            <Text style={styles.rowTitle}>Export Logs</Text>
+          </View>
+          <Text style={styles.chevron}>›</Text>
+        </TouchableOpacity>
 
         <View style={styles.divider} />
 
